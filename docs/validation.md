@@ -2,7 +2,7 @@
 
 ## Lokalt gennemført
 
-- 35 automatiske tests består på Windows / Python 3.11.
+- 36 automatiske tests består på Windows og Linux / Python 3.11.
 - EPSG:4326 ↔ EPSG:25832 rundtur og Aarhus-kontrolpunkt.
 - Ugyldig BBOX, tal, jobfelter, eksterne adresser og hemmeligheder afvises.
 - HTTP 200 med fejl-XML, ugyldigt/tomt/ensfarvet billede, forkert størrelse,
@@ -16,11 +16,17 @@
 - JavaScript-syntaks kontrolleret.
 - Browser: login, kortbaggrund, valgt ramme, koordinatindtastning og lille
   live-prøvebillede visuelt kontrolleret. Billedet viser sort-hvid bebyggelse/veje.
+- Lille live-eksport på 1024 × 1024 pixels / 256 × 256 meter gennemført.
+  Browserfanen blev lukket efter jobstart. Ved genåbning var jobbet færdigt.
+- A1 live-PDF renderet og visuelt kontrolleret; 594 × 841 mm, bevarede proportioner,
+  kildeangivelse i margen. Billeddata holdes lokalt.
+- Browser: tegning og flytning af ramme gennemført; 820 pixels tablet-layout
+  har én kolonne og ingen vandret overflydning.
+- Afhængigheder opdateret; pip-audit med alle runtime-/testafhængigheder
+  fandt ingen kendte sårbarheder 20. oktober 2026.
 
 ## Afventer kontrol før endelig release
 
-- Fuldt lille live-eksportjob og visuel PDF-kontrol.
-- Browsertegning/redigering og tablet-layout.
 - Linux-container, healthcheck, volume-skrivning og GitHub Actions.
 - Offentlig GHCR og anonym imagehentning.
 - TrueNAS-installation og eksport med lukket browser på NAS.

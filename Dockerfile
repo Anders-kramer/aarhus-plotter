@@ -2,6 +2,8 @@ FROM python:3.11-slim-bookworm
 LABEL org.opencontainers.image.source="https://github.com/Anders-kramer/aarhus-plotter"
 LABEL org.opencontainers.image.title="Aarhus Plotter"
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     groupadd -g 10001 plotter && useradd -u 10001 -g plotter -M plotter && \
