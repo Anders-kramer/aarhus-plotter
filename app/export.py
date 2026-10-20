@@ -34,6 +34,7 @@ def image_atomic(arr,path):
 
 def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     folder=Path(folder); spool=folder/'tiles'; spool.mkdir(parents=True,exist_ok=True)
+    sync_dir(folder); sync_dir(folder.parent)
     parts=list(model.tiles(j)); w,h=model.dimensions(j)
     disk(folder,model.estimate(j)['disk_bytes'])
     endpoint=None

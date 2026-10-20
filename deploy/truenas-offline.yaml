@@ -1,0 +1,24 @@
+# Load the public release image archive with docker load first.
+# Replace example IP and paths after checking your server.
+services:
+  plotter:
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.0
+    pull_policy: never
+    environment:
+      APP_PASSWORD_FILE: /run/secrets/password
+    ports:
+      - "192.0.2.10:8088:8080"
+    volumes:
+      - /mnt/POOL/aarhus-plotter/data:/data
+      - /mnt/POOL/aarhus-plotter/password.txt:/run/secrets/password:ro
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 2g
+    cpus: 2
+    restart: unless-stopped
+    stop_grace_period: 60s

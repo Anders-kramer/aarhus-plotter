@@ -44,6 +44,23 @@ docker compose up -d --build
 Image kører som UID/GID `10001:10001`, med read-only root og uden capabilities.
 Ingen Docker-socket eller privileged mode.
 
+Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
+Det kan installeres uden registry-login:
+
+```bash
+VERSION=1.0.0
+RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
+curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
+curl -fLO "$RELEASE_URL/truenas.yaml"
+curl -fLO "$RELEASE_URL/truenas-offline.yaml"
+curl -fLO "$RELEASE_URL/SHA256SUMS"
+sha256sum -c SHA256SUMS
+gzip -dc "aarhus-plotter-$VERSION-linux-amd64.tar.gz" | sudo docker load
+```
+
+Brug derefter `truenas-offline.yaml` med dine verificerede lokale værdier.
+Den bruger kun det allerede indlæste image (`pull_policy: never`).
+
 ## TrueNAS Custom App / Install via YAML
 
 Brug [`deploy/truenas.yaml`](deploy/truenas.yaml), ikke et vilkårligt
