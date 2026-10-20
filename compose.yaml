@@ -1,0 +1,22 @@
+services:
+  plotter:
+    build: .
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.0
+    environment:
+      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD to at least 16 characters}
+    ports:
+      - "127.0.0.1:8088:8080"
+    volumes:
+      - plotter-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 2g
+    cpus: 2
+    restart: unless-stopped
+    stop_grace_period: 60s
+volumes:
+  plotter-data:
