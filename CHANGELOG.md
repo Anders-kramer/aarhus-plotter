@@ -1,5 +1,10 @@
 # Ændringer
 
+## 1.0.1
+
+- Luk databaseforbindelser eksplicit efter hver transaktion.
+- Kontrollér anonym hentning og eksport fra det udgivne GHCR-image på en ny Linux-runner.
+
 ## 1.0.0
 
 - Dansk kortværksted med navngivne områder, tegnbar/redigerbar ramme og separat prøvebillede.

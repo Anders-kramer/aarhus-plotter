@@ -48,7 +48,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.0.0
+VERSION=1.0.1
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"

@@ -80,4 +80,31 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/anders-kramer/aarhus-plotter:${{ steps.version.outputs.tag }}
-          labels: org.opencontainers.image.source=https://github.com/Anders-kramer/aarhus-plotter
+          labels: |
+            org.opencontainers.image.source=https://github.com/Anders-kramer/aarhus-plotter
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+  anonymous-pull:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pull and run without registry credentials
+        run: |
+          export DOCKER_CONFIG="$(mktemp -d)"
+          image="ghcr.io/anders-kramer/aarhus-plotter:${GITHUB_REF_NAME#v}"
+          docker pull "$image"
+          test "$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$GITHUB_SHA"
+          docker run -d --name anonymous-plotter --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges --memory 2g \
+            -e APP_PASSWORD="synthetic-ci-password-only" \
+            -v anonymous-test-data:/data -p 127.0.0.1:8088:8080 "$image"
+          for i in $(seq 1 15); do
+            curl -fsS http://127.0.0.1:8088/health && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8088/health
+          docker exec -i anonymous-plotter python - < tests/container_smoke.py
+          docker stop anonymous-plotter

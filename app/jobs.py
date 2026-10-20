@@ -3,6 +3,7 @@ import sqlite3
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from . import export, model, source
 
@@ -22,9 +23,15 @@ class Jobs:
                 c.execute('ALTER TABLE jobs ADD COLUMN downloaded INTEGER DEFAULT 0')
             c.execute("UPDATE jobs SET state='interrupted', error='Serveren blev genstartet. Genoptag når du er klar.' WHERE state IN ('downloading','geotiff','pdf')")
 
+    @contextmanager
     def db(self):
         c=sqlite3.connect(self.root/'jobs.sqlite',timeout=20)
-        c.row_factory=sqlite3.Row; c.execute('PRAGMA synchronous=FULL'); return c
+        try:
+            c.row_factory=sqlite3.Row; c.execute('PRAGMA synchronous=FULL')
+            with c:
+                yield c
+        finally:
+            c.close()
 
     def list(self):
         with self.db() as c: rows=c.execute('SELECT * FROM jobs ORDER BY created DESC').fetchall()
