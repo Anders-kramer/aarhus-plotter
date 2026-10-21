@@ -14,13 +14,13 @@ function setup() {
   vm.runInContext(source,ctx);
   return {ctx,el:id=>document.getElementById(id),run:s=>vm.runInContext(s,ctx)};
 }
-test('oversized edited rectangle replaces stale estimates and cannot export', async()=>{
+test('invalid request replaces stale estimates and cannot export', async()=>{
   const {run,el}=setup();
   el('estimate').textContent='864 million pixels';
-  await run('bbox=[571768,6220363,579768,6230363]; api=async()=>{throw Error("Too many pixels")}; refreshEstimate()');
+  await run('bbox=[571768,6220363,579768,6230363]; api=async()=>{throw Error("Invalid settings")}; refreshEstimate()');
   assert.equal(el('size').textContent,'8.00 × 10.00 km');
   assert.equal(el('bbox').value,'571768.00, 6220363.00, 579768.00, 6230363.00');
-  assert.equal(el('estimate').textContent,'Too many pixels');
+  assert.equal(el('estimate').textContent,'Invalid settings');
   run('previewKey=JSON.stringify(bbox); $("checked").checked=true; updateStart()');
   assert.equal(el('start').disabled,true);
   await run('$("gsd").value="0.5"; api=async()=>({width_px:16000,height_px:20000,tiles:320,disk_bytes:1e9,paper_mm:[594,841],effective_dpi:100}); refreshEstimate()');

@@ -49,9 +49,10 @@ def decode(body,w,h):
     except Exception:
         raise SourceError('Kilden returnerede fejl-XML eller et ugyldigt billede.') from None
 
-def fetch(endpoint,box,w,h,check=lambda:None,session=requests):
+def fetch(endpoint,box,w,h,check=lambda:None,session=requests,crs='EPSG:25832'):
+    if crs not in ('EPSG:25832','EPSG:3857'):raise ValueError('Ugyldigt koordinatsystem.')
     params={'SERVICE':'WMS','VERSION':'1.1.1','REQUEST':'GetMap','LAYERS':LAYER,
-            'STYLES':'','SRS':'EPSG:25832','BBOX':','.join(map(str,box)),
+            'STYLES':'','SRS':crs,'BBOX':','.join(map(str,box)),
             'WIDTH':w,'HEIGHT':h,'FORMAT':'image/jpeg','TRANSPARENT':'FALSE'}
     for attempt in range(3):
         check()

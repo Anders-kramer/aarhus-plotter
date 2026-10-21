@@ -50,9 +50,6 @@ def validate(raw):
     w,h=dimensions(j)
     if min(w,h)<8:
         raise ValueError('Udsnittet er for lille. Vælg mindst 8 pixels pr. side.')
-    if w*h>1_000_000_000:
-        count=f'{w*h:,}'.replace(',', '.')
-        raise ValueError(f'Udsnittet kræver {count} pixels ved {j["meters_per_pixel"]} meter pr. pixel. Grænsen er 1 milliard. Gør rammen mindre eller vælg 0,5 eller 1 meter under Kildepixel.')
     return j
 
 def dimensions(j):
@@ -67,9 +64,26 @@ def geometry(j):
 
 def estimate(j):
     w,h=dimensions(j); pw,ph,x,y,mw,mh=geometry(j)
-    return {'width_px':w,'height_px':h,'tiles':math.ceil(w/1024)*math.ceil(h/1024),
+    n=math.ceil(w/1024)*math.ceil(h/1024)
+    return {'width_px':w,'height_px':h,'tiles':n,
             'disk_bytes':w*h*12+512_000_000,'effective_dpi':round(w/mw*25.4,1),
+            'duration_seconds':[math.ceil(n+w*h/20_000_000),math.ceil(n*8+w*h/2_000_000)],
+            'duration_basis':'Groft skøn: 1–8 sekunder pr. billedfelt og 2–20 millioner pixels/sekund til samling. Ikke en målt hastighed på din NAS. Køtid, genforsøg og ventetid hos kilden kommer oveni.',
             'paper_mm':[pw,ph], 'upscaled':w/mw*25.4<j['dpi']}
+
+def map_view(raw):
+    """Small on-demand Web Mercator viewport; independent of export GSD."""
+    if not isinstance(raw,dict) or set(raw)!={'bbox','width','height'}:
+        raise ValueError('Ugyldig kortforespørgsel.')
+    b=raw['bbox']; w=raw['width']; h=raw['height']
+    if not isinstance(b,list) or len(b)!=4 or any(type(v) not in (int,float) or not math.isfinite(v) for v in b):
+        raise ValueError('Ugyldige kortkoordinater.')
+    if not (8<=b[0]<b[2]<=12 and 54<=b[1]<b[3]<=58):
+        raise ValueError('Flyt kortet tilbage til Aarhus eller zoom ind.')
+    if type(w)!=int or type(h)!=int or not (8<=w<=1024 and 8<=h<=1024):
+        raise ValueError('Ugyldig kortstørrelse.')
+    t=Transformer.from_crs(4326,3857,always_xy=True)
+    return [*t.transform(b[0],b[1]),*t.transform(b[2],b[3])],w,h
 
 def tiles(j):
     w,h=dimensions(j); a,b,c,d=j['bbox']

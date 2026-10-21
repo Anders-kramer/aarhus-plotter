@@ -19,6 +19,11 @@ function updateStart() {
   $("start").disabled = !estimateValid || !$("checked").checked ||
     previewKey !== JSON.stringify(bbox) || !!editor;
 }
+function duration(seconds) {
+  if (seconds < 60) return "under 1 min";
+  if (seconds < 3600) return `${Math.ceil(seconds / 60)} min`;
+  return `${(seconds / 3600).toLocaleString("da", {maximumFractionDigits:1})} timer`;
+}
 function message(s) {
   $("message").textContent = s;
   clearTimeout(timer);
@@ -91,6 +96,8 @@ async function refreshEstimate() {
     $("estimate").append(p);
     for (const text of [
       `Ca. ${(e.disk_bytes / 1e9).toFixed(1)} GB diskreserve. Komprimering og midlertidige filer gør behovet usikkert.`,
+      `Ledigt på serveren: ${(e.free_disk_bytes / 1e9).toFixed(1)} GB.${e.free_disk_bytes < e.disk_bytes ? " Der skal frigøres plads før dette job kan køre." : ""}`,
+      ...(e.duration_seconds ? [`Anslået behandlingstid: ${duration(e.duration_seconds[0])} – ${duration(e.duration_seconds[1])}.`, e.duration_basis] : []),
       `Effektiv opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm.`,
       e.upscaled
         ? "Billedet forstørres på papiret. Valgt PDF-DPI tilføjer ikke oprindelige detaljer."
@@ -144,6 +151,57 @@ async function fromRect(layer) {
   invalidate();
   await refreshEstimate();
 }
+let modernLayer, historicalLayer, mapImageUrl, mapTimer, mapRevision = 0, mapBusy = false;
+function queueMapImage() {
+  ++mapRevision;
+  clearTimeout(mapTimer);
+  if ($("background").value === "historical") mapTimer = setTimeout(loadMapImage, 450);
+}
+async function loadMapImage() {
+  if (mapBusy || !map || $("background").value !== "historical" || $("workspace").hidden) return;
+  const rev = mapRevision, bounds = map.getBounds(), size = map.getSize();
+  const scale = Math.min(1, 1024 / size.x, 1024 / size.y);
+  mapBusy = true;
+  $("mapStatus").textContent = "Henter historisk kort · 1954…";
+  try {
+    const blob = await api("map-image", {
+      bbox:[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()],
+      width:Math.max(8,Math.round(size.x * scale)), height:Math.max(8,Math.round(size.y * scale))
+    });
+    if (rev !== mapRevision || $("background").value !== "historical") return;
+    const url = URL.createObjectURL(blob);
+    const layer = L.imageOverlay(url,bounds,{opacity:1,interactive:false,attribution:"DDO 1954 © Hexagon"});
+    layer.once("load",()=>{
+      if (rev !== mapRevision || $("background").value !== "historical") {
+        map.removeLayer(layer); URL.revokeObjectURL(url); return;
+      }
+      if (historicalLayer) map.removeLayer(historicalLayer);
+      if (mapImageUrl) URL.revokeObjectURL(mapImageUrl);
+      historicalLayer=layer; mapImageUrl=url;
+      layer.bringToBack(); if(rect) rect.bringToFront();
+      $("mapStatus").textContent="HISTORISK LUFTFOTO · 1954 · DDO © Hexagon · zoom ind for flere detaljer";
+    });
+    layer.addTo(map);
+  } catch(e) {
+    if(rev===mapRevision) $("mapStatus").textContent = `Kortet kunne ikke opdateres: ${e.message} Brug Opdatér kortbillede for at prøve igen.`;
+  } finally {
+    mapBusy=false;
+    if(rev!==mapRevision) queueMapImage();
+  }
+}
+$("background").onchange=()=>{
+  ++mapRevision; clearTimeout(mapTimer);
+  if($("background").value==="modern") {
+    if(historicalLayer) map.removeLayer(historicalLayer);
+    modernLayer.addTo(map);
+    $("mapStatus").textContent="MODERNE ORIENTERINGSKORT · kommer aldrig med i eksporten";
+  } else {
+    map.removeLayer(modernLayer);
+    if(historicalLayer) historicalLayer.addTo(map);
+    queueMapImage();
+  }
+};
+$("reloadMap").onclick=queueMapImage;
 async function boot() {
   try {
     const cfg = await api("config");
@@ -163,12 +221,13 @@ async function boot() {
         }),
       );
       $("profile").selectedIndex = 1;
-      map = L.map("map", { zoomControl: true });
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      map = L.map("map", { zoomControl: true, minZoom:10, maxZoom:19 });
+      modernLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution:
           '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
+      });
+      map.on("moveend",queueMapImage);
       group = L.featureGroup().addTo(map);
       map.on(L.Draw.Event.CREATED, async (e) => {
         group.clearLayers();
@@ -179,6 +238,7 @@ async function boot() {
       await rectangle();
     }
     map.invalidateSize();
+    queueMapImage();
     await listJobs();
   } catch (e) {
     if (!$("login").hidden) return;

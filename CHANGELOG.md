@@ -23,3 +23,10 @@
 ## 1.0.3
 
 - Browserfiler genvalideres ved genindlæsning; versionsmærket JavaScript undgår gamle cachefiler.
+
+## 1.1.0
+
+- Fjernet fast pixelgrænse; beholdt kontrol af faktisk ledig diskplads.
+- Viser fri plads, diskreserve og groft tidsinterval med forudsætninger.
+- Historisk 1954-kort som valgfri baggrund (standard), med korrekt Web Mercator-projektion.
+- Store TIFF-filer skrives eksplicit som BigTIFF.

@@ -57,7 +57,7 @@ def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     progress('geotiff',0,len(parts))
     with rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tmp,'w',driver='GTiff',width=w,height=h,count=3,
             dtype='uint8',crs='EPSG:25832',transform=from_bounds(*j['bbox'],w,h),
-            tiled=True,blockxsize=256,blockysize=256,compress='deflate',BIGTIFF='IF_SAFER') as ds:
+            tiled=True,blockxsize=256,blockysize=256,compress='deflate',BIGTIFF='YES' if w*h*3>=4_000_000_000 else 'IF_SAFER') as ds:
         ds.update_tags(YEAR='1954',SOURCE='DDO 1954 / Hexagon',DESCRIPTION='Efterkrigsmateriale')
         for i,(x,y,tw,th,box) in enumerate(parts):
             check(); disk(folder)

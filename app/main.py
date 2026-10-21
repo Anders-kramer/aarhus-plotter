@@ -5,6 +5,7 @@ import io
 import json
 import os
 import secrets
+import shutil
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -117,7 +118,20 @@ def create_app(root=None,password=None,worker=True):
     @app.get('/api/config')
     def config():return {'profiles':model.PROFILES,'papers':model.PAPERS}
     @app.post('/api/estimate')
-    async def estimate(request:Request):return model.estimate(model.validate(await request.json()))
+    async def estimate(request:Request):
+        e=model.estimate(model.validate(await request.json()))
+        e['free_disk_bytes']=shutil.disk_usage(root).free
+        return e
+    @app.post('/api/map-image')
+    async def map_image(request:Request):
+        box,w,h=model.map_view(await request.json())
+        if not preview_gate.acquire(False):raise HTTPException(429,'Et kortbillede hentes allerede. Prøv igen om lidt.')
+        try:
+            def get():
+                a=source.fetch(source.resolve(),box,w,h,crs='EPSG:3857')
+                b=io.BytesIO();Image.fromarray(a).save(b,format='PNG');return b.getvalue()
+            return Response(await asyncio.to_thread(get),media_type='image/png')
+        finally:preview_gate.release()
     @app.post('/api/convert')
     async def convert(request:Request):
         data=await request.json(); points=data.get('points',[])

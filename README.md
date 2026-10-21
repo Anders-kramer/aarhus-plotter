@@ -48,7 +48,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.0.3
+VERSION=1.1.0
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"
@@ -112,12 +112,15 @@ buffer i en afbrudt TIFF aldrig bruges som bevis for en færdig tile.
 PDF og TIFF offentliggøres først efter afsluttet filskrivning. Download er
 kun tilgængelig for færdige jobs og sendes som filstream.
 
-Ét eksportjob kører ad gangen, med én WMS-forespørgsel ad gangen. Et manuelt
+Ét eksportjob kører ad gangen, med én WMS-forespørgsel ad gangen. Et historisk kortbillede eller manuelt
 prøvebillede kan hente samtidigt, så maksimum er to. Netværksfejl forsøges
 højst tre gange; 429 og serverfejl bruger ventetid. En igangværende
 netværksforespørgsel kan forsinke annullering op til dens timeout.
-Diskkontrol foretages før og løbende under eksport. Grænsen er 1 milliard
-kildepixels pr. job og 10 ventende jobs.
+Diskkontrol foretages før og løbende under eksport. Der er ingen fast pixelgrænse
+pr. job; køen har højst 10 ventende jobs. Områdevalget gælder fortsat Aarhus-regionen.
+Før start vises konservativ diskreserve, faktisk fri plads og et groft tidsinterval.
+Intervallet bygger på 1–8 sekunder pr. felt og 2–20 millioner pixels/sekund til
+samling, ikke på en målt NAS-kapacitet. Køtid og kildeforsinkelser kommer oveni.
 
 Rasteret behandles i vinduer; det komplette bykort indlæses ikke i RAM.
 PDF-biblioteket beholder komprimerede billedobjekter frem til færdigskrivning.
@@ -172,3 +175,12 @@ Se [teststatus](docs/validation.md) for præcist gennemførte kontroller.
 Eksportgeometri og tileberegning viderefører ideerne fra brugerens tidligere
 Aarhus 1954 Windows-eksportør. Jobpersistens, atomisk spool, adgangsbeskyttelse,
 netværksgrænser og webapp er skrevet til serverudgaven.
+
+## Historisk kortbaggrund
+
+1954-luftfoto er standardbaggrund. Vælg Moderne orienteringskort i Kortbaggrund
+for at sammenligne. Rammen kan tegnes, flyttes og ændres på begge baggrunde.
+Efter zoom/panorering hentes ét billede af den synlige flade (højst 1024 pixels pr. side),
+ikke et offlinekort eller en forudhentning. Kortet bruger WMS EPSG:3857 for korrekt
+placering i Leaflet; eksporten bruger fortsat EPSG:25832 og den valgte kildepixel.
+Oversigtsbilledet er ikke eksportens opløsning. Kildens adgangsparametre forbliver på serveren.

@@ -1,7 +1,7 @@
 services:
   plotter:
     build: .
-    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.3
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.1.0
     environment:
       APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD to at least 16 characters}
     ports:

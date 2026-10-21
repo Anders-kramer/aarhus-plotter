@@ -56,6 +56,11 @@
             </div>
             <label class="sr" for="profile">Navngivet område</label
             ><select id="profile"></select>
+            <label for="background">Kortbaggrund</label>
+            <select id="background">
+              <option value="historical">Historisk luftfoto · 1954</option>
+              <option value="modern">Moderne orienteringskort</option>
+            </select>
             <div class="toolbar">
               <button id="draw">Tegn ny ramme</button
               ><button id="edit">Flyt / ændr ramme</button
@@ -67,11 +72,12 @@
             </p>
             <div
               id="map"
-              aria-label="Interaktivt moderne orienteringskort"
+              aria-label="Interaktivt kort til valg af område"
             ></div>
-            <p class="map-label">
-              MODERNE ORIENTERINGSKORT · kommer aldrig med i eksporten
+            <p class="map-label" id="mapStatus" role="status">
+              HISTORISK LUFTFOTO · 1954 · DDO © Hexagon
             </p>
+            <button id="reloadMap">Opdatér kortbillede</button>
             <details>
               <summary>Avancerede koordinater · EPSG:25832</summary>
               <label>Vest, syd, øst, nord<input id="bbox" type="text" /></label
@@ -184,6 +190,6 @@
     </footer>
     <script src="/vendor/leaflet.js"></script>
     <script src="/vendor/leaflet.draw.js"></script>
-    <script src="/app.js?v=1.0.3"></script>
+    <script src="/app.js?v=1.1.0"></script>
   </body>
 </html>

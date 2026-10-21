@@ -38,7 +38,7 @@ def test_projection_roundtrip_and_known_location():
     {'endpoint':'http://127.0.0.1/admin'}, {'endpoint':'https://services.hxgncontent.com/streaming/wms?token=secret'},
     {'extra_params':{'token':'secret'}},{'password':'secret'}, {'title':'bad\nname'},
     {'meters_per_pixel':True},{'margin_mm':float('inf')},{'dpi':400}, {'path':'../../etc/passwd'},
-    {'bbox':[555000,6200000,595000,6250000]}, {'bbox':[573300,6221700,573300,6221960]}])
+    {'bbox':[573300,6221700,573300,6221960]}])
 def test_reject_invalid_import(change):
     with pytest.raises(ValueError):config(**change)
 
@@ -46,13 +46,43 @@ def test_legacy_safe_import():
     j=config(source_profile='dmp_1954',endpoint='https://services.hxgncontent.com/streaming/wms',layer=source.LAYER)
     assert 'endpoint' not in j
 
-def test_whole_city_and_resized_rectangle_limits():
+def test_large_selection_has_no_pixel_cap_and_reports_resources():
     original=[571768,6220363,577768,6229363]
     assert model.estimate(config(bbox=original))['width_px']==24000
     enlarged=[571768,6220363,579768,6230363]
-    with pytest.raises(ValueError,match='1.280.000.000 pixels'):
-        config(bbox=enlarged)
+    j=config(bbox=enlarged)
+    assert model.dimensions(j)==(32000,40000)
+    e=model.estimate(j)
+    assert e['disk_bytes']>15_000_000_000
+    assert 0<e['duration_seconds'][0]<e['duration_seconds'][1]
+    assert 'Ikke en målt hastighed' in e['duration_basis']
     assert model.dimensions(config(bbox=enlarged,meters_per_pixel=.5))==(16000,20000)
+
+def test_historical_map_view_alignment_auth_and_size(tmp_path,monkeypatch):
+    called=[]
+    monkeypatch.setattr(source,'resolve',lambda:'private-source')
+    def fetch(endpoint,box,w,h,**kw):
+        called.append((box,w,h,kw)); return np.zeros((h,w,3),dtype=np.uint8)
+    monkeypatch.setattr(source,'fetch',fetch)
+    app=create_app(tmp_path,password='a-long-test-password',worker=False)
+    payload={'bbox':[10.18,56.14,10.22,56.17],'width':512,'height':384}
+    with TestClient(app) as c:
+        c.headers['X-Plotter-Request']='1'
+        assert c.post('/api/map-image',json=payload).status_code==401
+        c.post('/api/login',json={'password':'a-long-test-password'})
+        r=c.post('/api/map-image',json=payload)
+        assert r.status_code==200 and Image.open(io.BytesIO(r.content)).size==(512,384)
+        b,w,h,kw=called[0]
+        assert kw['crs']=='EPSG:3857'
+        from pyproj import Transformer
+        t=Transformer.from_crs(3857,4326,always_xy=True)
+        assert t.transform(b[0],b[1])==pytest.approx((10.18,56.14))
+        assert t.transform(b[2],b[3])==pytest.approx((10.22,56.17))
+        for bad in [{**payload,'width':100000},{**payload,'bbox':[0,0,1,1]},{**payload,'url':'https://evil.test'}]:
+            assert c.post('/api/map-image',json=bad).status_code==400
+        e=c.post('/api/estimate',json=config(bbox=[571768,6220363,579768,6230363])).json()
+        assert e['free_disk_bytes']>0 and e['width_px']*e['height_px']>1_000_000_000
+        assert len(called)==1
 
 def png(w=32,h=32,flat=False):
     a=np.zeros((h,w,3),dtype=np.uint8) if flat else synthetic('',[573300,6221700,573556,6221956],w,h)
