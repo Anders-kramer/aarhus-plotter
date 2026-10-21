@@ -59,7 +59,7 @@ function job() {
     bbox: bbox.slice(),
     paper: $("paper").value,
     orientation: $("orientation").value,
-    dpi: Number($("dpi").value),
+    dpi: $("dpi").value === "full" ? "full" : Number($("dpi").value),
     meters_per_pixel: Number($("gsd").value),
     margin_mm: Number($("margin").value),
     title: $("title").value,
@@ -75,6 +75,17 @@ function invalidate() {
     }),
   );
 }
+function dpiOptions(native) {
+  const select=$("dpi"), previous=select.value;
+  select.replaceChildren();
+  const full=document.createElement("option");full.value="full";
+  full.textContent=`Fuld kildeopløsning · ${native.toLocaleString("da",{maximumFractionDigits:1})} DPI`;
+  select.append(full);
+  for(let dpi=(Math.ceil(native/50)-1)*50;dpi>=50;dpi-=50) {
+    const o=document.createElement("option");o.value=String(dpi);o.textContent=`${dpi} DPI`;select.append(o);
+  }
+  select.value=previous!=="full" && Number(previous)<native && Number(previous)>=50 && Number(previous)%50===0 ? previous : "full";
+}
 async function refreshEstimate() {
   const v = ++revision;
   const j = job();
@@ -87,6 +98,10 @@ async function refreshEstimate() {
   try {
     const e = await api("estimate", j);
     if (v !== revision) return;
+    if (e.native_dpi) {
+      dpiOptions(e.native_dpi);
+      if ($("dpi").value !== String(j.dpi)) return refreshEstimate();
+    }
     $("size").textContent =
       `${((bbox[2] - bbox[0]) / 1000).toFixed(2)} × ${((bbox[3] - bbox[1]) / 1000).toFixed(2)} km`;
     $("bbox").value = bbox.map((x) => x.toFixed(2)).join(", ");
@@ -98,10 +113,11 @@ async function refreshEstimate() {
       `Ca. ${(e.disk_bytes / 1e9).toFixed(1)} GB diskreserve. Komprimering og midlertidige filer gør behovet usikkert.`,
       `Ledigt på serveren: ${(e.free_disk_bytes / 1e9).toFixed(1)} GB.${e.free_disk_bytes < e.disk_bytes ? " Der skal frigøres plads før dette job kan køre." : ""}`,
       ...(e.duration_seconds ? [`Anslået behandlingstid: ${duration(e.duration_seconds[0])} – ${duration(e.duration_seconds[1])}.`, e.duration_basis] : []),
-      `Effektiv opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm.`,
-      e.upscaled
-        ? "Billedet forstørres på papiret. Valgt PDF-DPI tilføjer ikke oprindelige detaljer."
-        : "PDF-opløsningen begrænser printbilledets pixelantal.",
+      `Kildens maksimale opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm.`,
+      ...(e.pdf_width_px ? [`PDF: ${e.pdf_width_px.toLocaleString("da")} × ${e.pdf_height_px.toLocaleString("da")} pixels · ${e.pdf_dpi} DPI.`,
+        e.pdf_width_px===e.width_px && e.pdf_height_px===e.height_px
+          ? "Alle kildepixels bevares uden nedskalering eller ekstra JPEG-komprimering."
+          : "PDF’en nedskaleres til den valgte opløsning og komprimeres tabsfrit. GeoTIFF bevarer alle kildepixels."] : []),
     ]) {
       const p = document.createElement("p");
       p.textContent = text;
@@ -367,18 +383,19 @@ $("import").onchange = async (e) => {
     if (!f) return;
     if (f.size > 32768) throw Error("Jobfilen må højst være 32 KB.");
     const j = JSON.parse(await f.text());
-    await api("estimate", j);
+    const importedEstimate = await api("estimate", j);
     bbox = j.bbox;
     $("profile").selectedIndex = profiles.length;
     for (const [id, key] of [
       ["paper", "paper"],
       ["orientation", "orientation"],
-      ["dpi", "dpi"],
       ["gsd", "meters_per_pixel"],
       ["margin", "margin_mm"],
       ["title", "title"],
     ])
       if (j[key] !== undefined) $(id).value = j[key];
+    dpiOptions(importedEstimate.native_dpi);
+    $("dpi").value = typeof j.dpi === "number" && j.dpi % 50 === 0 && j.dpi < importedEstimate.native_dpi ? String(j.dpi) : "full";
     invalidate();
     await rectangle();
     message("Jobbet er indlæst. Kontrollér et nyt prøvebillede før start.");

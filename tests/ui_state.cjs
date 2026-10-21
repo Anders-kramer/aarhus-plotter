@@ -6,7 +6,7 @@ function setup() {
   const elements = new Map();
   const values = {paper:'A1',orientation:'auto',dpi:'200',gsd:'0.25',margin:'8',title:'Test'};
   const document = {getElementById(id) {
-    if (!elements.has(id)) elements.set(id,{value:values[id],checked:false,textContent:'',replaceChildren(){this.textContent='';},append(){}});
+    if (!elements.has(id)) elements.set(id,{value:values[id],checked:false,textContent:'',children:[],replaceChildren(){this.textContent='';this.children=[];},append(child){this.children.push(child);}});
     return elements.get(id);
   },createElement(){return {};}};
   const ctx=vm.createContext({document,L:{drawLocal:{draw:{handlers:{rectangle:{tooltip:{}},simpleshape:{tooltip:{}}}},edit:{handlers:{edit:{tooltip:{}}}}}},setTimeout(){},clearTimeout(){}});
@@ -33,4 +33,15 @@ test('late invalid estimate cannot overwrite a newer valid selection',async()=>{
   run('rejectOld(Error("stale failure"))');await old;
   assert.notEqual(el('estimate').textContent,'stale failure');
   assert.equal(run('estimateValid'),true);
+});
+
+test('DPI menu offers full resolution and descending 50 DPI steps',()=>{
+  const {run,el}=setup();
+  el('dpi').value='full';run('dpiOptions(779.5)');
+  assert.deepEqual(el('dpi').children.map(x=>x.value),['full',...Array.from({length:15},(_,i)=>String(750-i*50))]);
+  assert.equal(el('dpi').value,'full');
+  el('dpi').value='700';run('dpiOptions(779.5)');assert.equal(el('dpi').value,'700');
+  run('dpiOptions(600)');assert.equal(el('dpi').value,'full');
+  assert.equal(el('dpi').children[1].value,'550');
+  run('dpiOptions(45)');assert.equal(el('dpi').children.length,1);
 });

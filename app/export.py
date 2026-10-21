@@ -9,9 +9,8 @@ from rasterio.transform import from_bounds
 from rasterio.windows import Window
 from rasterio.enums import Resampling
 from PIL import Image
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.lib.utils import ImageReader
 from . import model, source
+from .pdf_writer import RasterPDF
 
 def sync_dir(p):
     if os.name!='nt':
@@ -76,22 +75,17 @@ def make_pdf(j,tif,output,progress,check):
     pw,ph,sx,sy,mw,mh=model.geometry(j)
     # Never invent pixels by upsampling. Selected DPI is an upper bound.
     w,h=model.dimensions(j)
-    scale=min(1,mw/25.4*j['dpi']/w)
-    W,H=max(1,round(w*scale)),max(1,round(h*scale))
+    W,H=model.pdf_dimensions(j)
     chunks=[(x,y,min(1024,W-x),min(1024,H-y)) for y in range(0,H,1024) for x in range(0,W,1024)]
     output=Path(output); tmp=output.with_suffix('.partial.pdf'); mm=72/25.4
-    c=Canvas(str(tmp),pagesize=(pw*mm,ph*mm),pageCompression=1)
-    c.setTitle(j['title']); c.setAuthor('Aarhus Plotter'); c.setSubject(model.ATTRIBUTION)
     progress('pdf',0,len(chunks))
-    with rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tif) as ds:
+    with open(tmp,'wb') as f, rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tif) as ds:
+        c=RasterPDF(f,pw*mm,ph*mm,j['title'],model.ATTRIBUTION)
         for i,(x,y,cw,ch) in enumerate(chunks):
             check(); disk(output.parent)
             a=ds.read(window=Window(x*w/W,y*h/H,cw*w/W,ch*h/H),out_shape=(3,ch,cw),resampling=Resampling.bilinear)
-            b=io.BytesIO(); Image.fromarray(np.moveaxis(a,0,-1)).save(b,format='JPEG',quality=94)
-            b.seek(0)
-            c.drawImage(ImageReader(b),(sx+x*mw/W)*mm,(sy+(H-y-ch)*mh/H)*mm,
-                        width=cw*mw/W*mm,height=ch*mh/H*mm)
+            c.image(np.moveaxis(a,0,-1).tobytes(),cw,ch,(sx+x*mw/W)*mm,(sy+(H-y-ch)*mh/H)*mm,
+                    cw*mw/W*mm,ch*mh/H*mm)
             progress('pdf',i+1,len(chunks))
-    check(); c.setFont('Helvetica',7); c.setFillGray(.3)
-    c.drawString(8*mm,3*mm,model.ATTRIBUTION)
-    c.showPage(); c.save(); check(); publish(tmp,output)
+        check(); c.finish(model.ATTRIBUTION)
+    check(); publish(tmp,output)

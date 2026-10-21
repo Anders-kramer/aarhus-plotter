@@ -1,7 +1,7 @@
-Vælg område direkte på 1954-luftfotoet. Historisk baggrund er standard; moderne kort er fortsat tilgængeligt.
+Fuld kildeopløsning er nu standard for PDF. Alle hentede kildepixels bevares uden nedskalering og uden ekstra JPEG-komprimering. Vælg alternativt 50-DPI-trin under kildens maksimale opløsning på det valgte papir: fx fuld 779,5 DPI, 750, 700 … 50.
 
-Den faste grænse på én milliard pixels er fjernet. Appen viser i stedet estimeret diskreserve, faktisk ledig plads og et groft tidsinterval med tydelige forudsætninger. Diskkontrol før og under eksport er bevaret.
+PDF-filen skrives løbende til disk med tabsfri billedkomprimering og 64-bit filpositioner. Appen viser separat kildeopløsning, faktiske PDF-pixels og PDF-DPI. Estimater tager PDF-størrelsen med. Kildens egen JPEG-komprimering kan ikke gøres om.
 
-Kortvisningen henter ét lille billede efter zoom/panorering, korrekt placeret i EPSG:3857. Eksporten er fortsat EPSG:25832. Store TIFF-filer bruger BigTIFF.
+40 Python-tests og tre JavaScript-tests, herunder pixel-for-pixel-verifikation af PDF mod GeoTIFF, menuvalg, hukommelsesforbrug ved løbende skrivning, afbrydelse/genoptagelse og PDF-format. Lille live-PDF renderet og visuelt kontrolleret. Fuld byeksport og PDF over 10 GB er ikke fysisk testet.
 
-TrueNAS YAML, offline-image og checksums er vedlagt. Eksisterende dataformat er uændret. Større eksport end én milliard pixels er valideret uden fuld billedhentning; stor byeksport og det anslåede tidsinterval er ikke belastningstestet.
+Eksisterende jobs og data bevares. TrueNAS YAML, offline-image og checksums medfølger.

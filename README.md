@@ -48,7 +48,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.1.0
+VERSION=1.2.0
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"
@@ -123,14 +123,19 @@ Intervallet bygger på 1–8 sekunder pr. felt og 2–20 millioner pixels/sekund
 samling, ikke på en målt NAS-kapacitet. Køtid og kildeforsinkelser kommer oveni.
 
 Rasteret behandles i vinduer; det komplette bykort indlæses ikke i RAM.
-PDF-biblioteket beholder komprimerede billedobjekter frem til færdigskrivning.
+PDF-billedfelter komprimeres tabsfrit og skrives løbende til disk. Hele PDF-billedet
+beholdes ikke i RAM. PDF-krydsreferencer bruger 64-bit filpositioner.
 2 GB containerhukommelse er sat som en driftsgrænse, ikke et løfte om at enhver
 stor eksport vil lykkes. Diskestimatet er en konservativ reserve, ikke en
 præcis filstørrelse. Hele byeksporter er ikke verificeret ved udgivelsen.
 
-PDF-DPI er en øvre grænse for printbilledets opløsning. Et lille kildebillede
-bliver ikke kunstigt opskaleret til nye pixels. UI viser den effektive
-oprindelige opløsning på papiret. Print i faktisk størrelse / 100 %.
+PDF-opløsning er som standard **Fuld kildeopløsning**: alle hentede pixels
+bevares uden nedskalering eller ekstra JPEG-komprimering. Menuen tilbyder også
+50-DPI-trin under kildens maksimale opløsning på det valgte papir (fx fuld
+779,5 DPI, 750, 700 … 50). En mindre kilde opskaleres aldrig til nye pixels.
+Appen viser både kildens maksimum og PDF-filens faktiske pixels/DPI.
+Kilden leverer selv JPEG; tabsfri PDF kan ikke genskabe detaljer tabt hos kilden.
+Print i faktisk størrelse / 100 %. Gamle jobs med 240 DPI kan fortsat genoptages.
 
 ## Kilde og billedrettigheder
 

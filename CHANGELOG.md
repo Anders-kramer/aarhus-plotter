@@ -30,3 +30,10 @@
 - Viser fri plads, diskreserve og groft tidsinterval med forudsætninger.
 - Historisk 1954-kort som valgfri baggrund (standard), med korrekt Web Mercator-projektion.
 - Store TIFF-filer skrives eksplicit som BigTIFF.
+
+## 1.2.0
+
+- Fuld kildeopløsning som standard og dynamiske DPI-trin på 50 nedad.
+- Tabsfri PDF, skrevet feltvis til disk med 64-bit krydsreferencer.
+- Vis både kilde- og PDF-opløsning; disk- og tidsskøn tager PDF-størrelsen med.
+- Verificeret pixelidentitet mellem GeoTIFF og PDF ved fuld opløsning.

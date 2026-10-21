@@ -35,13 +35,16 @@ def validate(raw):
         raise ValueError('Området skal ligge omkring Aarhus og have positiv størrelse.')
     j = {'bbox':b,'meters_per_pixel':raw.get('meters_per_pixel',0.25),
          'paper':raw.get('paper','A1'),'orientation':raw.get('orientation','auto'),
-         'dpi':raw.get('dpi',200),'margin_mm':raw.get('margin_mm',8),
+         'dpi':raw.get('dpi','full'),'margin_mm':raw.get('margin_mm',8),
          'title':raw.get('title','Aarhus 1954')}
-    if any(type(j[k]) not in (int,float) for k in ('meters_per_pixel','dpi')) or any(not isinstance(j[k],str) for k in ('paper','orientation')):
+    if type(j['meters_per_pixel']) not in (int,float) or any(not isinstance(j[k],str) for k in ('paper','orientation')):
         raise ValueError('Indstillingerne har forkert datatype.')
-    for key,choices in [('meters_per_pixel',(0.25,0.5,1)),('paper',PAPERS),('orientation',('auto','portrait','landscape')),('dpi',(150,200,240,300))]:
+    for key,choices in [('meters_per_pixel',(0.25,0.5,1)),('paper',PAPERS),('orientation',('auto','portrait','landscape'))]:
         if j[key] not in choices or isinstance(j[key],bool):
             raise ValueError('Ugyldig indstilling: '+key)
+    # 240 remains readable for jobs created by older versions.
+    if j['dpi']!='full' and not (type(j['dpi']) in (int,float) and math.isfinite(j['dpi']) and j['dpi']>0 and (j['dpi']%50==0 or j['dpi']==240)):
+        raise ValueError('Vælg fuld kildeopløsning eller DPI i trin på 50.')
     m=j['margin_mm']
     if type(m) not in (int,float) or not math.isfinite(m) or not 8<=m<=35:
         raise ValueError('Margen skal være 8–35 mm, inklusive kildeangivelse.')
@@ -64,12 +67,21 @@ def geometry(j):
 
 def estimate(j):
     w,h=dimensions(j); pw,ph,x,y,mw,mh=geometry(j)
+    W,H=pdf_dimensions(j)
     n=math.ceil(w/1024)*math.ceil(h/1024)
     return {'width_px':w,'height_px':h,'tiles':n,
-            'disk_bytes':w*h*12+512_000_000,'effective_dpi':round(w/mw*25.4,1),
-            'duration_seconds':[math.ceil(n+w*h/20_000_000),math.ceil(n*8+w*h/2_000_000)],
+            'disk_bytes':w*h*9+W*H*3+512_000_000,'effective_dpi':round(w/mw*25.4,1),
+            'native_dpi':w/mw*25.4,'pdf_width_px':W,'pdf_height_px':H,'pdf_dpi':round(W/mw*25.4,1),
+            'duration_seconds':[math.ceil(n+(w*h+W*H)/20_000_000),math.ceil(n*8+(w*h+W*H)/2_000_000)],
             'duration_basis':'Groft skøn: 1–8 sekunder pr. billedfelt og 2–20 millioner pixels/sekund til samling. Ikke en målt hastighed på din NAS. Køtid, genforsøg og ventetid hos kilden kommer oveni.',
-            'paper_mm':[pw,ph], 'upscaled':w/mw*25.4<j['dpi']}
+            'paper_mm':[pw,ph], 'upscaled':j['dpi']!='full' and w/mw*25.4<j['dpi']}
+
+def pdf_dimensions(j):
+    w,h=dimensions(j)
+    if j['dpi']=='full':return w,h
+    mw=geometry(j)[4]
+    scale=min(1,mw/25.4*j['dpi']/w)
+    return max(1,round(w*scale)),max(1,round(h*scale))
 
 def map_view(raw):
     """Small on-demand Web Mercator viewport; independent of export GSD."""

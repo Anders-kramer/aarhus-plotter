@@ -4,5 +4,4 @@ requests==2.34.2
 numpy==2.4.6
 rasterio==1.4.4
 Pillow==13.0.0
-reportlab==5.0.1
 pyproj==3.7.2

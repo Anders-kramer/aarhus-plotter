@@ -37,7 +37,7 @@ def test_projection_roundtrip_and_known_location():
     {'bbox':[float('nan'),6221700,573556,6221956]}, {'bbox':[0,0,1,1]},
     {'endpoint':'http://127.0.0.1/admin'}, {'endpoint':'https://services.hxgncontent.com/streaming/wms?token=secret'},
     {'extra_params':{'token':'secret'}},{'password':'secret'}, {'title':'bad\nname'},
-    {'meters_per_pixel':True},{'margin_mm':float('inf')},{'dpi':400}, {'path':'../../etc/passwd'},
+    {'meters_per_pixel':True},{'margin_mm':float('inf')},{'dpi':425}, {'path':'../../etc/passwd'},
     {'bbox':[573300,6221700,573300,6221960]}])
 def test_reject_invalid_import(change):
     with pytest.raises(ValueError):config(**change)
@@ -50,7 +50,7 @@ def test_large_selection_has_no_pixel_cap_and_reports_resources():
     original=[571768,6220363,577768,6229363]
     assert model.estimate(config(bbox=original))['width_px']==24000
     enlarged=[571768,6220363,579768,6230363]
-    j=config(bbox=enlarged)
+    j=config(bbox=enlarged,dpi='full')
     assert model.dimensions(j)==(32000,40000)
     e=model.estimate(j)
     assert e['disk_bytes']>15_000_000_000
@@ -206,3 +206,48 @@ def test_no_default_password(tmp_path):
 def test_bounded_upstream_body():
     with pytest.raises(source.SourceError):
         source.bounded_body(Response(200,b'x'*100),50)
+
+def test_full_pdf_preserves_every_rgb_pixel_and_metadata(tmp_path):
+    j=config(dpi='full',title='Århus (1954) · kort')
+    export.run(j,tmp_path,lambda *a:None,lambda:None,fetch=synthetic,resolve=lambda:'')
+    pdf=PdfReader(tmp_path/'map.pdf',strict=True)
+    assert pdf.metadata.title==j['title']
+    images=pdf.pages[0]['/Resources']['/XObject']
+    with rasterio.open(tmp_path/'map.tif') as ds:
+        for i,(x,y,w,h,_) in enumerate(model.tiles(j),6):
+            im=images[f'/Im{i}'].get_object()
+            assert im['/Filter']=='/FlateDecode'
+            assert (im['/Width'],im['/Height'])==(w,h)
+            original=np.moveaxis(ds.read(window=rasterio.windows.Window(x,y,w,h)),0,-1)
+            assert im.get_data()==original.tobytes()
+    assert len(images)==len(list(model.tiles(j)))
+    assert 'Hexagon' in pdf.pages[0].extract_text()
+
+def test_full_and_50_dpi_steps_and_legacy_jobs():
+    j=config(dpi='full',bbox=[571768,6220363,577768,6229363],paper='A0')
+    e=model.estimate(j)
+    assert (e['pdf_width_px'],e['pdf_height_px'])==(24000,36000)
+    assert e['pdf_dpi']==pytest.approx(779.5,abs=.1)
+    for dpi in (50,100,350,600,750,240):
+        low=config(**{**j,'dpi':dpi}); w,h=model.pdf_dimensions(low)
+        assert w<=24000 and h<=36000
+        assert model.estimate(low)['disk_bytes']<e['disk_bytes']
+    assert model.pdf_dimensions(config(**{**j,'dpi':800}))==(24000,36000)
+    for dpi in (True,None,'600',float('inf'),0,-50,425):
+        with pytest.raises(ValueError):config(dpi=dpi)
+
+def test_pdf_image_streams_do_not_accumulate_in_memory(tmp_path):
+    import tracemalloc
+    from app.pdf_writer import RasterPDF
+    rng=np.random.default_rng(42)
+    rgb=rng.integers(0,256,(1024,1024,3),dtype=np.uint8).tobytes()
+    tracemalloc.start()
+    try:
+        with open(tmp_path/'stream.pdf','wb') as f:
+            pdf=RasterPDF(f,100,100,'Memory test','')
+            for _ in range(16):pdf.image(rgb,1024,1024,0,0,100,100)
+            pdf.finish('Test')
+        _,peak=tracemalloc.get_traced_memory()
+        assert (tmp_path/'stream.pdf').stat().st_size>48_000_000
+        assert peak<24_000_000
+    finally:tracemalloc.stop()
