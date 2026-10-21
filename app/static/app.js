@@ -13,7 +13,12 @@ let bbox = [573235, 6222400, 576535, 6226600],
   profiles = [],
   previewKey = "",
   timer,
+  estimateValid = false,
   revision = 0;
+function updateStart() {
+  $("start").disabled = !estimateValid || !$("checked").checked ||
+    previewKey !== JSON.stringify(bbox) || !!editor;
+}
 function message(s) {
   $("message").textContent = s;
   clearTimeout(timer);
@@ -67,9 +72,15 @@ function invalidate() {
 }
 async function refreshEstimate() {
   const v = ++revision;
+  const j = job();
+  estimateValid = false;
+  updateStart();
+  $("size").textContent =
+    `${((bbox[2] - bbox[0]) / 1000).toFixed(2)} × ${((bbox[3] - bbox[1]) / 1000).toFixed(2)} km`;
+  $("bbox").value = bbox.map((x) => x.toFixed(2)).join(", ");
+  $("estimate").textContent = "Kontrollerer det aktuelle udsnit…";
   try {
-    const j = job(),
-      e = await api("estimate", j);
+    const e = await api("estimate", j);
     if (v !== revision) return;
     $("size").textContent =
       `${((bbox[2] - bbox[0]) / 1000).toFixed(2)} × ${((bbox[3] - bbox[1]) / 1000).toFixed(2)} km`;
@@ -89,9 +100,13 @@ async function refreshEstimate() {
       p.textContent = text;
       $("estimate").append(p);
     }
+    estimateValid = true;
+    updateStart();
   } catch (e) {
+    if (v !== revision) return;
+    $("estimate").textContent = e.message;
     message(e.message);
-    $("start").disabled = true;
+    updateStart();
   }
 }
 async function rectangle(fit = true) {
@@ -160,9 +175,6 @@ async function boot() {
         rect = e.layer;
         group.addLayer(rect);
         await fromRect(rect);
-      });
-      map.on("draw:edited", async (e) => {
-        for (const l of e.layers.getLayers()) await fromRect(l);
       });
       await rectangle();
     }
@@ -276,9 +288,7 @@ $("previewButton").onclick = async () => {
     $("previewButton").disabled = false;
   }
 };
-$("checked").onchange = () =>
-  ($("start").disabled =
-    !$("checked").checked || previewKey !== JSON.stringify(bbox));
+$("checked").onchange = updateStart;
 $("start").onclick = async () => {
   $("start").disabled = true;
   try {
@@ -288,8 +298,7 @@ $("start").onclick = async () => {
   } catch (e) {
     message(e.message);
   } finally {
-    $("start").disabled =
-      !$("checked").checked || previewKey !== JSON.stringify(bbox);
+    updateStart();
   }
 };
 $("import").onchange = async (e) => {

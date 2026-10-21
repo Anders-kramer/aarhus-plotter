@@ -12,3 +12,10 @@
 - GeoTIFF og A0/A1/A2/A3 PDF med kildeangivelse og ærlig opløsningsberegning.
 - Adgangsbeskyttelse, begrænset import og fast serverstyret billedkilde.
 - Docker, Compose, TrueNAS YAML og GitHub Actions.
+
+## 1.0.2
+
+- Opdater aktuelle mål og koordinater selv når en redigeret ramme er for stor.
+- Fjern forældede estimater, vis faktisk pixelantal og vejledning.
+- Blokér eksport ved ugyldige indstillinger og ignorér forsinkede estimatsvar.
+- Undgå dobbelt behandling når en ramme gemmes.

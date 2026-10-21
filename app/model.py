@@ -48,8 +48,11 @@ def validate(raw):
     if not isinstance(j['title'],str) or len(j['title'])>100 or any(ord(c)<32 for c in j['title']):
         raise ValueError('Titlen skal være højst 100 tegn uden kontroltegn.')
     w,h=dimensions(j)
-    if min(w,h)<8 or w*h>1_000_000_000:
-        raise ValueError('Vælg mellem 8 pixels pr. side og 1 milliard pixels i alt.')
+    if min(w,h)<8:
+        raise ValueError('Udsnittet er for lille. Vælg mindst 8 pixels pr. side.')
+    if w*h>1_000_000_000:
+        count=f'{w*h:,}'.replace(',', '.')
+        raise ValueError(f'Udsnittet kræver {count} pixels ved {j["meters_per_pixel"]} meter pr. pixel. Grænsen er 1 milliard. Gør rammen mindre eller vælg 0,5 eller 1 meter under Kildepixel.')
     return j
 
 def dimensions(j):

@@ -21,6 +21,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
       - run: node --check app/static/app.js
+      - run: node --test tests/ui_state.cjs
       - name: Build and test restricted container
         run: |
           docker build -t plotter:test .

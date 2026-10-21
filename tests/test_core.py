@@ -46,6 +46,14 @@ def test_legacy_safe_import():
     j=config(source_profile='dmp_1954',endpoint='https://services.hxgncontent.com/streaming/wms',layer=source.LAYER)
     assert 'endpoint' not in j
 
+def test_whole_city_and_resized_rectangle_limits():
+    original=[571768,6220363,577768,6229363]
+    assert model.estimate(config(bbox=original))['width_px']==24000
+    enlarged=[571768,6220363,579768,6230363]
+    with pytest.raises(ValueError,match='1.280.000.000 pixels'):
+        config(bbox=enlarged)
+    assert model.dimensions(config(bbox=enlarged,meters_per_pixel=.5))==(16000,20000)
+
 def png(w=32,h=32,flat=False):
     a=np.zeros((h,w,3),dtype=np.uint8) if flat else synthetic('',[573300,6221700,573556,6221956],w,h)
     b=io.BytesIO(); Image.fromarray(a).save(b,format='PNG');return b.getvalue()
