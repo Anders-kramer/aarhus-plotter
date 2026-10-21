@@ -29,10 +29,20 @@
   og syntetisk GeoTIFF/PDF/preview-eksport består.
 - GHCR v1.0.0 publiceret; anonym token- og manifesthentning gav HTTP 200.
 
-## Afventer kontrol før endelig release
+## Release og TrueNAS – gennemført 21. oktober 2026
 
-- Komplet anonym hentning og eksporttest af den endelige v1.0.1.
-- TrueNAS-installation og eksport med lukket browser på NAS.
+- v1.0.1: komplet anonym GHCR-hentning, revisionskontrol og container-eksporttest
+  består i separat GitHub Actions-runner uden registry-login.
+- Offentlige releasefiler hentet uden login; SHA256SUMS stemmer.
+- Installeret via TrueNAS Custom App API på verificeret 26.0.0-BETA.2,
+  med separat dataset, UID 10001, adgangskodefil og ledig LAN-port.
+- Container-healthcheck, browserlogin og live-prøvebillede består.
+- NAS-eksport af 256 × 256 meter til A1 fortsatte med lukket browserfane.
+  Færdigt job bevaret efter container-genstart og nyt login.
+- A0 og A1 downloadet fra NAS med login: 1024 × 1024 GeoTIFF,
+  EPSG:25832, korrekt BBOX og PDF-mål 841 × 1189 / 594 × 841 mm.
+- Job-API uden login afvises med HTTP 401.
+- Lokale adresser, adgangskoder og billeddata er ikke publiceret.
 
 ## Begrænsninger
 
