@@ -4,7 +4,7 @@
 # Do not expose this HTTP service to the internet.
 services:
   plotter:
-    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.2
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.3
     environment:
       APP_PASSWORD_FILE: /run/secrets/password
     ports:

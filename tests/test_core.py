@@ -151,6 +151,8 @@ def test_jobs_recovery_cancel_and_immutable_settings(tmp_path):
 def test_auth_csrf_import_download_and_delete(tmp_path):
     app=create_app(tmp_path,password='a-long-test-password',worker=False)
     with TestClient(app) as c:
+        assert c.get('/').headers['cache-control']=='no-cache'
+        assert c.get('/app.js').headers['cache-control']=='no-cache'
         assert c.get('/api/jobs').status_code==401
         assert c.post('/api/login',json={'password':'a-long-test-password'}).status_code==403
         c.headers['X-Plotter-Request']='1'

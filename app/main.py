@@ -73,6 +73,8 @@ def create_app(root=None,password=None,worker=True):
         response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
         response.headers['Content-Security-Policy']="default-src 'self'; img-src 'self' blob: data: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         if path.startswith('/api/'):response.headers['Cache-Control']='no-store'
+        elif not path.startswith('/vendor/'):
+            response.headers['Cache-Control']='no-cache'
         return response
 
     @app.exception_handler(ValueError)

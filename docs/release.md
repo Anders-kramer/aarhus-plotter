@@ -5,7 +5,7 @@ Installér via TrueNAS **Custom App / Install via YAML**. Vælg selv et separat
 dataset, en ledig port og en privat adgangskode på mindst 16 tegn.
 
 - `truenas.yaml`: installation fra versionsmærket GHCR-image.
-- `aarhus-plotter-1.0.2-linux-amd64.tar.gz`: færdigbygget Linux/AMD64-image,
+- `aarhus-plotter-1.0.3-linux-amd64.tar.gz`: færdigbygget Linux/AMD64-image,
   som også kan hentes fra denne release uden registry-login.
 - `truenas-offline.yaml`: brug efter `docker load` af imagearkivet.
 - `SHA256SUMS`: kontrolsummer for de tre installationsfiler.

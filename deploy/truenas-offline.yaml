@@ -2,7 +2,7 @@
 # Replace example IP and paths after checking your server.
 services:
   plotter:
-    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.2
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.0.3
     pull_policy: never
     environment:
       APP_PASSWORD_FILE: /run/secrets/password

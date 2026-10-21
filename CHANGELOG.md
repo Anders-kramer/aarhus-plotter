@@ -19,3 +19,7 @@
 - Fjern forældede estimater, vis faktisk pixelantal og vejledning.
 - Blokér eksport ved ugyldige indstillinger og ignorér forsinkede estimatsvar.
 - Undgå dobbelt behandling når en ramme gemmes.
+
+## 1.0.3
+
+- Browserfiler genvalideres ved genindlæsning; versionsmærket JavaScript undgår gamle cachefiler.
