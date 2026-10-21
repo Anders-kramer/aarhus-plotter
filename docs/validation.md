@@ -2,7 +2,7 @@
 
 ## Lokalt gennemført
 
-- 37 automatiske Python-tests og to JavaScript-tests består lokalt.
+- 40 automatiske Python-tests og tre JavaScript-tests består lokalt.
 - Ugyldige indstillinger fjerner forældede estimater og holder eksport deaktiveret.
 - Udsnit over én milliard pixels accepteres uden skalering (fra v1.1.0).
 - Forsinkede fejlsvar kan ikke overskrive en nyere gyldig beregning.
@@ -66,3 +66,16 @@ Genskabt i NAS-browser: en forstørret ramme blev tidligere afvist, mens gamle m
 - Tidsintervallet er et planlægningsskøn med eksplicitte forudsætninger; ikke en målt garanti.
 
 - NAS v1.1.0: healthy container, historisk kort og rammeredigering visuelt kontrolleret. Samme udsnit over én milliard pixels viser korrekt ressourceoverslag; tidligere jobs er bevaret. CI inklusive anonym GHCR-hentning består.
+
+## v1.2.0 – fuld opløsning og tabsfri PDF
+
+- Sammenlignet alle dekodede RGB-bytes i en PDF med flere billedfelter mod GeoTIFF: identiske ved fuld kildeopløsning.
+- Kilde, titel med danske tegn, A0/A1-papirmål og PDF-struktur læses korrekt med pypdf i strict mode.
+- Lille live-A0-PDF renderet med MuPDF og visuelt kontrolleret for retning, proportioner, marginer og kildeangivelse.
+- 16 ukomprimerbare billedfelter gav over 48 MB PDF med under 24 MB ekstra Python-allokering under skrivning. Dette er en afgrænset hukommelsestest, ikke en fuld byeksport.
+- DPI-menu kontrolleret for fuld 779,5 DPI efterfulgt af 750, 700 … 50, bevaret valg og overgang til fuld opløsning når papir/udsnit sænker maksimum.
+- Gamle jobs med 240 DPI er stadig læsbare. Nye valg bruger 50-DPI-trin.
+- PDF over 10 GB og fuld byeksport er ikke fysisk testet.
+
+- NAS v1.2.0: menuen viser fuld 779,5 DPI samt 750 … 50; 600 DPI giver korrekt reduceret pixelantal. Lille fuld A0-eksport kørt på NAS: PDF-billedets dekodede pixels er identiske med GeoTIFF, og A0 måler 841 × 1189 mm.
+- GitHub Actions med 40 Python-tests, tre JavaScript-tests, container-eksport og anonym GHCR-hentning består.
