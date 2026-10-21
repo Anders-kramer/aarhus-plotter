@@ -3,8 +3,8 @@
 ## Lokalt gennemført
 
 - 37 automatiske Python-tests og to JavaScript-tests består lokalt.
-- Rammer over pixelgrænsen fjerner forældede estimater, viser aktuelle koordinater
-  og holder eksport deaktiveret. Ændring til 0,5 meter kan gøre rammen gyldig igen.
+- Ugyldige indstillinger fjerner forældede estimater og holder eksport deaktiveret.
+- Udsnit over én milliard pixels accepteres uden skalering (fra v1.1.0).
 - Forsinkede fejlsvar kan ikke overskrive en nyere gyldig beregning.
 - HTML og app-JavaScript kræver cache-genvalidering ved genindlæsning.
 - EPSG:4326 ↔ EPSG:25832 rundtur og Aarhus-kontrolpunkt.
@@ -56,3 +56,13 @@ Ingen billeddata fra livetest publiceres.
 ## Rammeredigering v1.0.3
 
 Genskabt i NAS-browser: en forstørret ramme blev tidligere afvist, mens gamle mål stod tilbage. Efter opdatering vises 7,98 × 9,64 km og 1.230.317.855 pixels. Ved 0,5 meter accepteres samme ramme med 15.960 × 19.273 pixels. Eksisterende jobs er bevaret. GitHub Actions med 37 Python-tests, to JavaScript-tests og anonym containerhentning består.
+
+## v1.1.0 – historisk baggrund og ressourceoverslag
+
+- Live WMS-forespørgsel i EPSG:3857 giver et korrekt dekodet 512 × 512-billede.
+- API-test verificerer kortkoordinaternes rundtur, login, størrelsesgrænse for oversigtsbilleder og afvisning af eksterne URL-felter.
+- Lokalt browserkontrolleret: 1954-baggrund, zoom, redigering og skift til/fra moderne kort med bevaret ramme.
+- En ramme på ca. 1,23 milliarder pixels accepteres og viser tid, diskreserve og faktisk fri plads. Ingen stor eksport blev startet som led i denne kontrol.
+- Tidsintervallet er et planlægningsskøn med eksplicitte forudsætninger; ikke en målt garanti.
+
+- NAS v1.1.0: healthy container, historisk kort og rammeredigering visuelt kontrolleret. Samme udsnit over én milliard pixels viser korrekt ressourceoverslag; tidligere jobs er bevaret. CI inklusive anonym GHCR-hentning består.
