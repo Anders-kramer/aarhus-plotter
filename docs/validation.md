@@ -2,7 +2,11 @@
 
 ## Lokalt gennemført
 
-- 36 automatiske tests består på Windows og Linux / Python 3.11.
+- 37 automatiske Python-tests og to JavaScript-tests består lokalt.
+- Rammer over pixelgrænsen fjerner forældede estimater, viser aktuelle koordinater
+  og holder eksport deaktiveret. Ændring til 0,5 meter kan gøre rammen gyldig igen.
+- Forsinkede fejlsvar kan ikke overskrive en nyere gyldig beregning.
+- HTML og app-JavaScript kræver cache-genvalidering ved genindlæsning.
 - EPSG:4326 ↔ EPSG:25832 rundtur og Aarhus-kontrolpunkt.
 - Ugyldig BBOX, tal, jobfelter, eksterne adresser og hemmeligheder afvises.
 - HTTP 200 med fejl-XML, ugyldigt/tomt/ensfarvet billede, forkert størrelse,
@@ -48,3 +52,7 @@
 
 Fuld byeksport, faktisk strømafbrydelse og alle printerdrivere er ikke testet.
 Ingen billeddata fra livetest publiceres.
+
+## Rammeredigering v1.0.3
+
+Genskabt i NAS-browser: en forstørret ramme blev tidligere afvist, mens gamle mål stod tilbage. Efter opdatering vises 7,98 × 9,64 km og 1.230.317.855 pixels. Ved 0,5 meter accepteres samme ramme med 15.960 × 19.273 pixels. Eksisterende jobs er bevaret. GitHub Actions med 37 Python-tests, to JavaScript-tests og anonym containerhentning består.
