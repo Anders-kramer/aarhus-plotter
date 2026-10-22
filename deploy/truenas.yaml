@@ -1,17 +1,13 @@
 # TrueNAS Apps > Discover Apps > menu > Install via YAML
 # Replace the bind IP and data path with verified local values.
-# Create password.txt yourself, readable by UID 10001, outside the data directory.
 # Do not expose this HTTP service to the internet.
 services:
   plotter:
-    image: ghcr.io/anders-kramer/aarhus-plotter:1.2.1
-    environment:
-      APP_PASSWORD_FILE: /run/secrets/password
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.3.0
     ports:
       - "192.0.2.10:8088:8080"
     volumes:
       - /mnt/POOL/aarhus-plotter/data:/data
-      - /mnt/POOL/aarhus-plotter/password.txt:/run/secrets/password:ro
     user: "10001:10001"
     read_only: true
     tmpfs:

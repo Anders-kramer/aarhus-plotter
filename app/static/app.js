@@ -42,17 +42,11 @@ async function api(path, data) {
     } catch {
       s = "Serveren kunne ikke svare.";
     }
-    if (r.status === 401 && path !== "login") showLogin();
     throw Error(s);
   }
   return r.headers.get("Content-Type")?.includes("image/")
     ? r.blob()
     : r.json();
-}
-function showLogin() {
-  $("login").hidden = false;
-  $("workspace").hidden = true;
-  $("logout").hidden = true;
 }
 function job() {
   return {
@@ -222,9 +216,7 @@ async function boot() {
   try {
     const cfg = await api("config");
     profiles = cfg.profiles;
-    $("login").hidden = true;
     $("workspace").hidden = false;
-    $("logout").hidden = false;
     if (!map) {
       for (const p of profiles) {
         const o = document.createElement("option");
@@ -257,24 +249,9 @@ async function boot() {
     queueMapImage();
     await listJobs();
   } catch (e) {
-    if (!$("login").hidden) return;
     message(e.message);
   }
 }
-$("loginForm").onsubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api("login", { password: $("password").value });
-    $("password").value = "";
-    await boot();
-  } catch (e) {
-    message(e.message);
-  }
-};
-$("logout").onclick = async () => {
-  await api("logout", {});
-  showLogin();
-};
 $("profile").onchange = async () => {
   if ($("profile").selectedIndex === profiles.length) return;
   const [name, x, y, w, h] = profiles[$("profile").selectedIndex];

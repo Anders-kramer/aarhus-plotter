@@ -28,7 +28,6 @@ jobs:
           docker run -d --name plotter-test --read-only --tmpfs /tmp --cap-drop ALL \
             --security-opt no-new-privileges --memory 2g \
             --health-interval=2s --health-start-period=2s \
-            -e APP_PASSWORD="synthetic-ci-password-only" \
             -v plotter-test-data:/data -p 127.0.0.1:8088:8080 plotter:test
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8088/health && break
@@ -100,7 +99,6 @@ jobs:
           test "$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$GITHUB_SHA"
           docker run -d --name anonymous-plotter --read-only --tmpfs /tmp --cap-drop ALL \
             --security-opt no-new-privileges --memory 2g \
-            -e APP_PASSWORD="synthetic-ci-password-only" \
             -v anonymous-test-data:/data -p 127.0.0.1:8088:8080 "$image"
           for i in $(seq 1 15); do
             curl -fsS http://127.0.0.1:8088/health && break

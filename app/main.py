@@ -1,13 +1,9 @@
 import asyncio
-import hashlib
-import hmac
 import io
 import json
 import os
-import secrets
 import shutil
 import threading
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -19,13 +15,9 @@ from . import model, source
 from .jobs import Jobs
 
 STATIC=Path(__file__).parent/'static'
-def create_app(root=None,password=None,worker=True):
+def create_app(root=None,worker=True):
     root=Path(root or os.getenv('DATA_DIR','data'))
-    password=password or os.getenv('APP_PASSWORD','')
-    secret_file=os.getenv('APP_PASSWORD_FILE')
-    if secret_file: password=Path(secret_file).read_text().strip()
-    if len(password)<16: raise RuntimeError('APP_PASSWORD skal indeholde mindst 16 tegn. Ingen standardadgangskode.')
-    sessions={}; attempts={}; preview_gate=threading.Lock()
+    preview_gate=threading.Lock()
     lock=None
     if worker:
         root.mkdir(parents=True,exist_ok=True)
@@ -64,10 +56,6 @@ def create_app(root=None,password=None,worker=True):
                 if size>32768:return JSONResponse({'detail':'Jobfilen er for stor.'},413)
                 chunks.append(chunk)
             request._body=b''.join(chunks)
-        if path.startswith('/api/') and path!='/api/login':
-            token=request.cookies.get('plotter','')
-            expires=sessions.get(hashlib.sha256(token.encode()).hexdigest(),0)
-            if expires<time.time(): return JSONResponse({'detail':'Log ind for at fortsætte.'},401)
         response=await call_next(request)
         response.headers['X-Content-Type-Options']='nosniff'
         response.headers['X-Frame-Options']='DENY'
@@ -91,30 +79,6 @@ def create_app(root=None,password=None,worker=True):
             raise HTTPException(503,'Arbejderen svarer ikke.')
         with jobs.db() as c:c.execute('SELECT 1').fetchone()
         return {'status':'ok'}
-    @app.post('/api/login')
-    async def login(request:Request):
-        now=time.time(); addr=request.client.host
-        # Bounded global throttling also limits distributed LAN attempts.
-        for k in list(attempts):
-            if now-attempts[k][0]>300: del attempts[k]
-        bucket=attempts.setdefault(addr,[now,0]); bucket[1]+=1
-        if bucket[1]>10 or sum(v[1] for v in attempts.values())>100:raise HTTPException(429,'Vent fem minutter før næste loginforsøg.')
-        data=await request.json()
-        if not isinstance(data,dict):raise ValueError('Ugyldig loginanmodning.')
-        supplied=data.get('password','')
-        if not isinstance(supplied,str) or not hmac.compare_digest(hashlib.sha256(supplied.encode()).digest(),hashlib.sha256(password.encode()).digest()):raise HTTPException(401,'Forkert adgangskode.')
-        attempts.pop(addr,None)
-        for k in list(sessions):
-            if sessions[k]<now:del sessions[k]
-        if len(sessions)>100:sessions.clear()
-        token=secrets.token_urlsafe(32); sessions[hashlib.sha256(token.encode()).hexdigest()]=now+43200
-        response=JSONResponse({'ok':True})
-        response.set_cookie('plotter',token,httponly=True,samesite='strict',secure=request.url.scheme=='https',max_age=43200)
-        return response
-    @app.post('/api/logout')
-    def logout(request:Request):
-        sessions.pop(hashlib.sha256(request.cookies.get('plotter','').encode()).hexdigest(),None)
-        r=JSONResponse({'ok':True}); r.delete_cookie('plotter'); return r
     @app.get('/api/config')
     def config():return {'profiles':model.PROFILES,'papers':model.PAPERS}
     @app.post('/api/estimate')

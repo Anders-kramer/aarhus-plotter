@@ -1,3 +1,7 @@
+# 1.3.0
+
+- Open the local app directly without password login. Same-origin request checks remain enabled.
+
 # 1.2.1
 
 - Preserve valid uniform WMS tiles over sea or missing photo coverage instead of stopping exports. Existing tile caches remain resumable.

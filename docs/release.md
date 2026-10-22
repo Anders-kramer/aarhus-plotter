@@ -1,3 +1,3 @@
-Aarhus Plotter 1.2.1
+Aarhus Plotter 1.3.0
 
-Fixes exports stopping at valid uniform source tiles, including black areas outside historical photo coverage. Source pixels are preserved without inventing imagery. Invalid responses and wrong dimensions are still rejected. Existing jobs can resume using saved tiles.
+The app opens directly without a password. Login, logout, session cookies and password configuration have been removed. All devices with network access can use the app and its exports. Existing export data is preserved. Same-origin request checks and deletion confirmation remain enabled.

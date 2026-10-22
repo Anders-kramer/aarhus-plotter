@@ -6,7 +6,7 @@ georefereret GeoTIFF og PDF i A0, A1, A2 eller A3.
 
 ## Brug
 
-1. Log ind med din egen installationsadgangskode.
+1. Åbn appen direkte på dit lokale netværk.
 2. Vælg en områdeprofil, tegn en ramme, eller flyt og ændr rammen.
 3. Hent et lille 1954-prøvebillede og kontrollér motivet.
 4. Vælg papir, retning, margen, PDF-DPI og kildepixel.
@@ -35,8 +35,6 @@ Kræver Docker med Compose. Bash:
 git clone https://github.com/Anders-kramer/aarhus-plotter.git
 cd aarhus-plotter
 umask 077
-printf 'APP_PASSWORD=%s\n' "$(openssl rand -hex 24)" > .env
-# Gem adgangskoden fra .env i din adgangskodeadministrator.
 docker compose up -d --build
 ```
 
@@ -48,7 +46,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.2.0
+VERSION=1.3.0
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"
@@ -70,10 +68,9 @@ Se [TrueNAS' installationsvejledning](https://apps.truenas.com/managing-apps/ins
 1. Kontrollér din ledige LAN-port, pool og dataset i TrueNAS.
 2. Opret et separat dataset til appen, og giv UID/GID 10001 adgang til
    undermappen `data`. Del ikke dine mediebiblioteker med containeren.
-3. Opret en adgangskodefil uden for `data` og hold den privat.
-4. Erstat eksempel-IP `192.0.2.10`, `POOL` og stier i YAML med dine verificerede
+3. Erstat eksempel-IP `192.0.2.10`, `POOL` og stier i YAML med dine verificerede
    værdier. Eksempel-IP'en er en dokumentationsadresse og kan ikke bruges direkte.
-5. I Apps → Discover Apps → menu → Install via YAML: indsæt filen og installér
+4. I Apps → Discover Apps → menu → Install via YAML: indsæt filen og installér
    med navnet `aarhus-plotter`.
 
 Eksempel på klargøring via Bash, **efter** dataset og placering er valgt:
@@ -82,21 +79,15 @@ Eksempel på klargøring via Bash, **efter** dataset og placering er valgt:
 APP_ROOT=/mnt/POOL/aarhus-plotter
 sudo install -d -o 10001 -g 10001 -m 700 "$APP_ROOT/data"
 umask 077
-openssl rand -hex 24 | sudo tee "$APP_ROOT/password.txt" >/dev/null
-sudo chown 10001:10001 "$APP_ROOT/password.txt"
-sudo chmod 400 "$APP_ROOT/password.txt"
 ```
 
-Der er ingen standardadgangskode. Minimum er 16 tegn. Brug kun et betroet
-privat netværk; HTTP krypterer ikke forbindelsen. Ved adgang over andre netværk
-skal en korrekt konfigureret HTTPS-proxy bruges. Ingen automatisk portåbning.
+Appen kræver ikke login. Alle enheder med netværksadgang til appen kan bruge den og hente eller slette eksportjob. Installationen er beregnet til dit lokale netværk.
 
 ### Drift, opdatering og sikkerhedskopi
 
 - Start/stop i TrueNAS Apps. Med Compose: `docker compose stop` / `docker compose up -d`.
 - Tag snapshot/backup af hele datadatasættet, helst mens appen er stoppet.
   SQLite-database, eventuelle WAL-filer og billedfelter hører sammen.
-- Gem adgangskodefilen separat og sikkert. Backup indeholder personlige billedkopier.
 - Opdatér ved at ændre image-tag til en ny verificeret version og geninstallere.
   Stop appen og tag snapshot først. Brug aldrig to instanser på samme volume.
 - Rollback: stop, gendan datavolume fra snapshot hvis databaseskemaet er ændret,
@@ -168,7 +159,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 python -m pytest -q
-export APP_PASSWORD="$(openssl rand -hex 24)"
 uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8088 --workers 1
 ```
 

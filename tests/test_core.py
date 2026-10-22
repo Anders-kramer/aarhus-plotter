@@ -64,12 +64,10 @@ def test_historical_map_view_alignment_auth_and_size(tmp_path,monkeypatch):
     def fetch(endpoint,box,w,h,**kw):
         called.append((box,w,h,kw)); return np.zeros((h,w,3),dtype=np.uint8)
     monkeypatch.setattr(source,'fetch',fetch)
-    app=create_app(tmp_path,password='a-long-test-password',worker=False)
+    app=create_app(tmp_path,worker=False)
     payload={'bbox':[10.18,56.14,10.22,56.17],'width':512,'height':384}
     with TestClient(app) as c:
         c.headers['X-Plotter-Request']='1'
-        assert c.post('/api/map-image',json=payload).status_code==401
-        c.post('/api/login',json={'password':'a-long-test-password'})
         r=c.post('/api/map-image',json=payload)
         assert r.status_code==200 and Image.open(io.BytesIO(r.content)).size==(512,384)
         b,w,h,kw=called[0]
@@ -199,16 +197,14 @@ def test_jobs_recovery_cancel_and_immutable_settings(tmp_path):
     jobs.once(runner);assert jobs.get(id)['state']=='cancelled'
     jobs.action(id,'delete');assert not jobs.list()
 
-def test_auth_csrf_import_download_and_delete(tmp_path):
-    app=create_app(tmp_path,password='a-long-test-password',worker=False)
+def test_no_login_csrf_import_download_and_delete(tmp_path):
+    app=create_app(tmp_path,worker=False)
     with TestClient(app) as c:
         assert c.get('/').headers['cache-control']=='no-cache'
         assert c.get('/app.js').headers['cache-control']=='no-cache'
-        assert c.get('/api/jobs').status_code==401
-        assert c.post('/api/login',json={'password':'a-long-test-password'}).status_code==403
+        assert c.get('/api/jobs').status_code==200
+        assert c.post('/api/jobs',json=config()).status_code==403
         c.headers['X-Plotter-Request']='1'
-        assert c.post('/api/login',json={'password':'bad'}).status_code==401
-        assert c.post('/api/login',json={'password':'a-long-test-password'}).status_code==200
         assert c.post('/api/jobs',json=config(),headers={'Origin':'https://evil.test'}).status_code==403
         assert c.post('/api/jobs',json={'endpoint':'http://localhost/'}).status_code==400
         j=c.post('/api/jobs',json=config()).json();id=j['id']
@@ -219,10 +215,6 @@ def test_auth_csrf_import_download_and_delete(tmp_path):
         assert c.post(f'/api/jobs/{id}/delete',json={'confirm':id}).status_code==200
         assert c.get('/api/jobs/invalid/files/map.tif').status_code==404
         assert c.post('/api/jobs',content='x'*33000).status_code==413
-        c.post('/api/logout',json={});assert c.get('/api/jobs').status_code==401
-
-def test_no_default_password(tmp_path):
-    with pytest.raises(RuntimeError):create_app(tmp_path,password='short')
 
 def test_bounded_upstream_body():
     with pytest.raises(source.SourceError):
