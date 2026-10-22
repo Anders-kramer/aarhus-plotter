@@ -1,3 +1,7 @@
+# 1.2.1
+
+- Preserve valid uniform WMS tiles over sea or missing photo coverage instead of stopping exports. Existing tile caches remain resumable.
+
 # Ændringer
 
 ## 1.0.1

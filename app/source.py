@@ -42,8 +42,8 @@ def decode(body,w,h):
         with Image.open(io.BytesIO(body)) as im:
             if im.size!=(w,h): raise SourceError('Billedkilden returnerede forkert billedstørrelse.')
             im.load(); a=np.array(im.convert('RGB'))
-        if a.std(axis=(0,1)).max()<1:
-            raise SourceError('Ensfarvet billedfelt. Kontrollér dækningen og prøv et andet udsnit.')
+        # Valid WMS tiles can be uniform over sea or outside photo coverage.
+        # Preserve the provider's pixels; uniformity is not a transport error.
         return a
     except SourceError: raise
     except Exception:

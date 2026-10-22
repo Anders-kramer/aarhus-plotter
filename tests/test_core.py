@@ -94,10 +94,31 @@ class Response:
     def iter_content(self,n):yield self.content
     def close(self):pass
 
-@pytest.mark.parametrize('body',[b'<ServiceExceptionReport>SECRET</ServiceExceptionReport>',b'<html>bad</html>',b'',png(16,16),png(flat=True)])
+@pytest.mark.parametrize('body',[b'<ServiceExceptionReport>SECRET</ServiceExceptionReport>',b'<html>bad</html>',b'',png(16,16)])
 def test_decode_errors_no_upstream_disclosure(body):
     with pytest.raises(source.SourceError) as e:source.decode(body,32,32)
     assert 'SECRET' not in str(e.value)
+
+
+def test_uniform_coverage_tile_preserved():
+    a=source.decode(png(flat=True),32,32)
+    assert a.shape==(32,32,3) and not a.any()
+
+
+def test_uniform_tiles_export_and_resume(tmp_path):
+    j=config(bbox=[573300,6221700,573820,6221960],dpi=50)
+    calls=[]
+    def flat(endpoint,box,w,h,**kw):
+        calls.append(box)
+        return source.decode(png(w,h,flat=True),w,h)
+    export.run(j,tmp_path,lambda *a:None,lambda:None,fetch=flat,resolve=lambda:'test')
+    count=len(calls)
+    assert count>1
+    export.run(j,tmp_path,lambda *a:None,lambda:None,fetch=flat,resolve=lambda:'test')
+    assert len(calls)==count
+    with rasterio.open(tmp_path/'map.tif') as ds:
+        assert not ds.read().any()
+    assert len(PdfReader(tmp_path/'map.pdf').pages)==1
 
 def test_fetch_timeout_retries(monkeypatch):
     monkeypatch.setattr(source.time,'sleep',lambda x:None)
