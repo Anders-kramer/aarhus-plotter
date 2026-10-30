@@ -1,10 +1,12 @@
 """Fixed provider; credentials exist only in memory. Never relay upstream error text."""
 import io
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlencode
+import os
 import requests
 import numpy as np
 from PIL import Image
+from . import catalog
 
 METADATA='https://datakatalog.miljoeportal.dk/api/datasets/urn%3Admp%3Ads%3Aortofoto-1954'
 DATASET_ID='urn:dmp:ds:ortofoto-1954'
@@ -12,8 +14,14 @@ LAYER='DK-DDOland1954_25cm_UTM32ETRS89'
 
 class SourceError(Exception): pass
 
-def resolve():
-    """Resolve the approved 1954 WMS endpoint from the current JSON:API catalogue."""
+def resolve(profile='dmp_1954'):
+    """Resolve approved sources without persisting or exposing access keys."""
+    spec=catalog.require_available(profile)
+    if spec['kind']=='datafordeler':
+        # Official fixed service URL; only the API key is configurable by environment.
+        base='https://wms.datafordeler.dk/LaveMaalebordsblade/topo20_lave_maalebordsblade/1.0.0/wms'
+        return base+'?'+urlencode({'apikey':os.environ[spec['credential_env']]})
+    if spec['kind']!='dmp': raise SourceError('Kortkilden er ikke klar.')
     try:
         r=requests.get(METADATA,params={'include':'wmsSource'},
                        headers={'Accept':'application/vnd.api+json'},
@@ -71,11 +79,20 @@ def decode(body,w,h):
     except Exception:
         raise SourceError('Kilden returnerede fejl-XML eller et ugyldigt billede.') from None
 
-def fetch(endpoint,box,w,h,check=lambda:None,session=requests,crs='EPSG:25832'):
+def fetch(endpoint,box,w,h,check=lambda:None,session=requests,crs='EPSG:25832',source_profile='dmp_1954'):
     if crs not in ('EPSG:25832','EPSG:3857'):raise ValueError('Ugyldigt koordinatsystem.')
-    params={'SERVICE':'WMS','VERSION':'1.1.1','REQUEST':'GetMap','LAYERS':LAYER,
-            'STYLES':'','SRS':crs,'BBOX':','.join(map(str,box)),
-            'WIDTH':w,'HEIGHT':h,'FORMAT':'image/jpeg','TRANSPARENT':'FALSE'}
+    spec=catalog.get(source_profile)
+    if spec['kind']=='datafordeler':
+        params={'SERVICE':'WMS','VERSION':'1.3.0','REQUEST':'GetMap',
+                'LAYERS':'dtk_lave_maalebordsblade','STYLES':'',
+                'CRS':crs,'BBOX':','.join(map(str,box)),
+                'WIDTH':w,'HEIGHT':h,'FORMAT':'image/jpeg','TRANSPARENT':'FALSE'}
+    elif spec['kind']=='dmp':
+        params={'SERVICE':'WMS','VERSION':'1.1.1','REQUEST':'GetMap','LAYERS':LAYER,
+                'STYLES':'','SRS':crs,'BBOX':','.join(map(str,box)),
+                'WIDTH':w,'HEIGHT':h,'FORMAT':'image/jpeg','TRANSPARENT':'FALSE'}
+    else:
+        raise SourceError('Kortkilden er ikke klar.')
     for attempt in range(3):
         check()
         try:
