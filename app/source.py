@@ -6,25 +6,47 @@ import requests
 import numpy as np
 from PIL import Image
 
-METADATA='https://arealdata-api.miljoeportal.dk/datasets/urn:dmp:ds:ortofoto-1954'
+METADATA='https://datakatalog.miljoeportal.dk/api/datasets/urn%3Admp%3Ads%3Aortofoto-1954'
+DATASET_ID='urn:dmp:ds:ortofoto-1954'
 LAYER='DK-DDOland1954_25cm_UTM32ETRS89'
 
 class SourceError(Exception): pass
 
 def resolve():
+    """Resolve the approved 1954 WMS endpoint from the current JSON:API catalogue."""
     try:
-        r=requests.get(METADATA,timeout=(10,30),allow_redirects=False)
-        r.raise_for_status(); data=r.json()
-        if data['attributes']['wms-layer-name']!=LAYER: raise ValueError()
-        for s in data['sources']:
-            if s['type'].lower()=='wms':
-                for v in s['urls']:
-                    u=urlsplit(v['url'])
-                    if (u.scheme,u.netloc,u.path)==('https','services.hxgncontent.com','/streaming/wms') and not u.fragment:
-                        return v['url']
+        r=requests.get(METADATA,params={'include':'wmsSource'},
+                       headers={'Accept':'application/vnd.api+json'},
+                       timeout=(10,30),allow_redirects=False)
+        if r.status_code!=200: raise ValueError()
+        data=r.json()
+        dataset=data['data']
+        if dataset['id']!=DATASET_ID: raise ValueError()
+
+        ref=dataset['relationships']['wmsSource']['data']
+        if not isinstance(ref,dict) or ref.get('type')!='wmsSources': raise ValueError()
+
+        matching=[item for item in data['included']
+                  if item.get('type')==ref['type'] and item.get('id')==ref['id']]
+        if len(matching)!=1: raise ValueError()
+        attrs=matching[0]['attributes']
+        if (attrs.get('layer')!=LAYER or
+            attrs.get('version')!='1.1.1' or
+            attrs.get('format')!='image/jpeg'):
+            raise ValueError()
+
+        endpoint=attrs['url']
+        u=urlsplit(endpoint)
+        if ((u.scheme,u.hostname,u.path)!=
+            ('https','services.hxgncontent.com','/streaming/wms') or
+            u.port not in (None,443) or u.username or u.password or
+            u.fragment or not u.query):
+            raise ValueError()
+        return endpoint
     except Exception:
+        # Never expose API response bodies, credentials or private query parameters.
         pass
-    raise SourceError('Den officielle kilde kunne ikke bekræftes. Prøv igen senere.')
+    raise SourceError('Den officielle kilde kunne ikke bekræftes. Prøv igen senere.') from None
 
 def bounded_body(response,limit=16_000_000):
     """Bound memory even when the provider sends a huge/chunked response."""
