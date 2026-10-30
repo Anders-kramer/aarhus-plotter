@@ -78,6 +78,12 @@ function sourceOptions() {
   gs.value=String(s.default_mpp || .25);
   $("sourceHelp").textContent=s.period+" · "+s.provider+
     (s.available ? " · Kontrollér udgaveår og faktisk dækning." : " · "+s.reason);
+  if (s.license_url) {
+    const link=document.createElement("a");
+    link.href=s.license_url; link.textContent=" · Licens";
+    link.target="_blank"; link.rel="noopener";
+    $("sourceHelp").append(link);
+  }
 }
 function invalidate() {
   ++previewRevision;

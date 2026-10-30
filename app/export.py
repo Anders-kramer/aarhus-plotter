@@ -112,7 +112,9 @@ def make_pdf(j,tif,output,progress,check):
     output=Path(output); tmp=output.with_suffix('.partial.pdf'); mm=72/25.4
     progress('pdf',0,len(chunks))
     with open(tmp,'wb') as f, rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tif) as ds:
-        attribution=catalog.get(j.get('source_profile','dmp_1954'))['attribution']
+        spec=catalog.get(j.get('source_profile','dmp_1954'))
+        attribution=spec['attribution']
+        if spec.get('license_url'):attribution+=' · '+spec['license_url']
         c=RasterPDF(f,pw*mm,ph*mm,j['title'],attribution)
         for i,(x,y,cw,ch) in enumerate(chunks):
             check(); disk(output.parent)

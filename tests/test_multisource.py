@@ -87,6 +87,10 @@ def test_historical_export_metadata_and_pdf(tmp_path,monkeypatch):
         assert 'YEAR' not in tags
         assert tuple(ds.bounds)==tuple(j['bbox'])
     assert (tmp_path/'map.pdf').is_file()
+    from pypdf import PdfReader
+    pdf=PdfReader(tmp_path/'map.pdf')
+    assert 'https://creativecommons.org/licenses/by/4.0/' in pdf.metadata.subject
+    assert 'Klimadatastyrelsen' in pdf.pages[0].extract_text()
 
 
 def test_source_selection_api(monkeypatch,tmp_path):
