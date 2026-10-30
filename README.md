@@ -179,3 +179,41 @@ Efter zoom/panorering hentes ét billede af den synlige flade (højst 1024 pixel
 ikke et offlinekort eller en forudhentning. Kortet bruger WMS EPSG:3857 for korrekt
 placering i Leaflet; eksporten bruger fortsat EPSG:25832 og den valgte kildepixel.
 Oversigtsbilledet er ikke eksportens opløsning. Kildens adgangsparametre forbliver på serveren.
+
+## Flere historiske kortkilder (udviklingsversion)
+
+Kortkilden vælges i brugerfladen, før område, prøvebillede og eksport.
+Kilde-id gemmes sammen med hvert nyt job; gamle jobs uden kilde-id fortsætter
+som **DDO 1954**. Kun godkendte, kendte korttjenester accepteres – WMS-URL og
+adgangsnøgler kan ikke angives i JSON-import, API eller browser.
+
+| Kilde-id | Materiale | Tilgængelighed | Anbefalet eksportafstand |
+| --- | --- | --- | --- |
+| `dmp_1954` | DDO 1954, Hexagon | Standard, fungerende offentlig katalogrelation | 0,25 m/pixel |
+| `lave_maalebordsblade` | Lave målebordsblade, Datafordeleren | Aktiveres med API-nøgle | 1 m/pixel som **praktisk forslag**, ikke dokumenteret originalopløsning |
+| `lw_1944` | Luftwaffe 1944, FlyFotos.dk | Låst til verificeret adgang, rettigheder og WMS | Ikke fastlagt |
+| `ia_1945` | Allierede 1945, FlyFotos.dk | Låst til verificeret adgang, rettigheder og WMS | Ikke fastlagt |
+
+### Aktivering af Datafordeler-kort
+
+Datafordelerens dokumenterede WMS-tjeneste:
+https://datafordeler.dk/dataoversigt/historiske-kort-og-data/lave-maalebordsblade-wms/
+
+1. Opret en API-nøgle hos Datafordeleren i henhold til deres vilkår.
+2. Angiv den **udelukkende som servermiljøvariabel** `PLOTTER_DATAFORDELER_APIKEY`
+   i TrueNAS-appens konfiguration / Docker Compose. Send ikke nøglen til
+   Plotters API eller indsæt den i eksportindstillinger.
+3. Genstart appen og kontrollér, at kilden nu er valgbar. Hent et lille
+   prøvebillede før et stort eksportjob.
+
+Korttjenesten viser kortblade fra **1901–1971**, og det enkelte blads revision
+behøver ikke være 1940–1945. Plotter udleder derfor ikke et specifikt årstal
+for disse eksporter. Kontrollér årstal og om ønsket udsnit er dækket i kilden.
+
+FlyFotos.dk sælger særskilt WMS-adgang til LW1944 og IA_1945.
+Begge er registreret som inaktive kilder indtil URL-format, lag, aftale og
+eksportrettigheder er bekræftet:
+https://flyfotos.dk/da-dk/Produkter/Adgang
+
+**Rettigheder:** Download og mulighed for print indebærer ikke automatisk
+tilladelse til offentliggørelse, massehentning eller deling på en spilserver.
