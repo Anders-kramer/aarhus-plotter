@@ -11,13 +11,14 @@ let bbox = [573235, 6222400, 576535, 6226600],
   rect,
   group,
   profiles = [],
+  sources = [],
   previewKey = "",
   timer,
   estimateValid = false,
   revision = 0;
 function updateStart() {
   $("start").disabled = !estimateValid || !$("checked").checked ||
-    previewKey !== JSON.stringify(bbox) || !!editor;
+    previewKey !== JSON.stringify({bbox,source_profile:$("sourceProfile").value}) || !!editor;
 }
 function duration(seconds) {
   if (seconds < 60) return "under 1 min";
@@ -51,6 +52,7 @@ async function api(path, data) {
 function job() {
   return {
     bbox: bbox.slice(),
+    source_profile: $("sourceProfile").value || "dmp_1954",
     paper: $("paper").value,
     orientation: $("orientation").value,
     dpi: $("dpi").value === "full" ? "full" : Number($("dpi").value),
@@ -58,6 +60,23 @@ function job() {
     margin_mm: Number($("margin").value),
     title: $("title").value,
   };
+}
+function currentSource() {
+  return sources.find(s => s.id === $("sourceProfile").value) || sources[0] ||
+    {id:"dmp_1954",period:"1954",label:"DDO 1954"};
+}
+function sourceOptions() {
+  const s=currentSource(), gs=$("gsd");
+  gs.replaceChildren();
+  for (const value of s.meters_per_pixel || [0.25,0.5,1]) {
+    const o=document.createElement("option");
+    o.value=String(value);
+    o.textContent=value.toLocaleString("da")+" meter";
+    gs.append(o);
+  }
+  gs.value=String(s.default_mpp || .25);
+  $("sourceHelp").textContent=s.period+" · "+s.provider+
+    (s.available ? " · Kontrollér udgaveår og faktisk dækning." : " · "+s.reason);
 }
 function invalidate() {
   previewKey = "";
@@ -172,15 +191,16 @@ async function loadMapImage() {
   const rev = mapRevision, bounds = map.getBounds(), size = map.getSize();
   const scale = Math.min(1, 1024 / size.x, 1024 / size.y);
   mapBusy = true;
-  $("mapStatus").textContent = "Henter historisk kort · 1954…";
+  $("mapStatus").textContent = "Henter " + currentSource().label + "…";
   try {
     const blob = await api("map-image", {
       bbox:[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()],
-      width:Math.max(8,Math.round(size.x * scale)), height:Math.max(8,Math.round(size.y * scale))
+      width:Math.max(8,Math.round(size.x * scale)), height:Math.max(8,Math.round(size.y * scale)),
+       source_profile: $("sourceProfile").value || "dmp_1954"
     });
     if (rev !== mapRevision || $("background").value !== "historical") return;
     const url = URL.createObjectURL(blob);
-    const layer = L.imageOverlay(url,bounds,{opacity:1,interactive:false,attribution:"DDO 1954 © Hexagon"});
+    const layer = L.imageOverlay(url,bounds,{opacity:1,interactive:false,attribution:currentSource().attribution});
     layer.once("load",()=>{
       if (rev !== mapRevision || $("background").value !== "historical") {
         map.removeLayer(layer); URL.revokeObjectURL(url); return;
@@ -189,7 +209,7 @@ async function loadMapImage() {
       if (mapImageUrl) URL.revokeObjectURL(mapImageUrl);
       historicalLayer=layer; mapImageUrl=url;
       layer.bringToBack(); if(rect) rect.bringToFront();
-      $("mapStatus").textContent="HISTORISK LUFTFOTO · 1954 · DDO © Hexagon · zoom ind for flere detaljer";
+      $("mapStatus").textContent=currentSource().label+" · zoom ind for flere detaljer";
     });
     layer.addTo(map);
   } catch(e) {
@@ -212,10 +232,32 @@ $("background").onchange=()=>{
   }
 };
 $("reloadMap").onclick=queueMapImage;
+$("sourceProfile").onchange = async () => {
+  ++mapRevision; clearTimeout(mapTimer);
+  if (historicalLayer) {map.removeLayer(historicalLayer);historicalLayer=null;}
+  if (mapImageUrl) {URL.revokeObjectURL(mapImageUrl);mapImageUrl=null;}
+  sourceOptions();
+  $("title").value="Aarhus · "+currentSource().period.split(" · ")[0];
+  invalidate();
+  await refreshEstimate();
+  queueMapImage();
+};
 async function boot() {
   try {
     const cfg = await api("config");
     profiles = cfg.profiles;
+    sources = cfg.sources || [{id:"dmp_1954",label:"DDO 1954",period:"1954",
+      provider:"Hexagon",available:true,default_mpp:.25,meters_per_pixel:[.25,.5,1]}];
+    $("sourceProfile").replaceChildren();
+    for (const s of sources) {
+      const option=document.createElement("option");
+      option.value=s.id;
+      option.disabled=!s.available;
+      option.textContent=s.label+(s.available ? "" : " · ikke tilgængelig");
+      $("sourceProfile").append(option);
+    }
+    $("sourceProfile").value="dmp_1954";
+    sourceOptions();
     $("workspace").hidden = false;
     if (!map) {
       for (const p of profiles) {
@@ -256,7 +298,7 @@ $("profile").onchange = async () => {
   if ($("profile").selectedIndex === profiles.length) return;
   const [name, x, y, w, h] = profiles[$("profile").selectedIndex];
   bbox = [x - w * 500, y - h * 500, x + w * 500, y + h * 500];
-  $("title").value = name + " · 1954";
+  $("title").value = name + " · " + currentSource().period.split(" · ")[0];
   invalidate();
   await rectangle();
 };
@@ -321,13 +363,13 @@ for (const id of ["paper", "orientation", "dpi", "gsd", "margin", "title"])
   $(id).onchange = refreshEstimate;
 $("previewButton").onclick = async () => {
   const j = job(),
-    key = JSON.stringify(j.bbox);
+    key = JSON.stringify({bbox:j.bbox,source_profile:j.source_profile});
   $("previewButton").disabled = true;
   try {
     const b = await api("preview", j);
-    if (key !== JSON.stringify(bbox)) return;
+    if (key !== JSON.stringify({bbox,source_profile:$("sourceProfile").value})) return;
     const im = document.createElement("img");
-    im.alt = "Historisk luftfoto fra 1954 for det valgte område";
+    im.alt = currentSource().label + " for det valgte område";
     const url = URL.createObjectURL(b);
     im.onload = () => URL.revokeObjectURL(url);
     im.src = url;
@@ -362,6 +404,12 @@ $("import").onchange = async (e) => {
     const j = JSON.parse(await f.text());
     const importedEstimate = await api("estimate", j);
     bbox = j.bbox;
+    $("sourceProfile").value=j.source_profile || "dmp_1954";
+    sourceOptions();
+    if (j.meters_per_pixel !== undefined) $("gsd").value=String(j.meters_per_pixel);
+    ++mapRevision;
+    if (historicalLayer) {map.removeLayer(historicalLayer);historicalLayer=null;}
+    if (mapImageUrl) {URL.revokeObjectURL(mapImageUrl);mapImageUrl=null;}
     $("profile").selectedIndex = profiles.length;
     for (const [id, key] of [
       ["paper", "paper"],
