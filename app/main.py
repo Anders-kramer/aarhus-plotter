@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
-from . import model, source
+from . import model, source, catalog
 from .jobs import Jobs
 
 STATIC=Path(__file__).parent/'static'
@@ -80,7 +80,7 @@ def create_app(root=None,worker=True):
         with jobs.db() as c:c.execute('SELECT 1').fetchone()
         return {'status':'ok'}
     @app.get('/api/config')
-    def config():return {'profiles':model.PROFILES,'papers':model.PAPERS}
+    def config():return {'profiles':model.PROFILES,'papers':model.PAPERS,'sources':catalog.catalogue()}
     @app.post('/api/estimate')
     async def estimate(request:Request):
         e=model.estimate(model.validate(await request.json()))
@@ -88,11 +88,17 @@ def create_app(root=None,worker=True):
         return e
     @app.post('/api/map-image')
     async def map_image(request:Request):
-        box,w,h=model.map_view(await request.json())
+        raw=await request.json()
+        if not isinstance(raw,dict):raise ValueError('Ugyldig kortforespørgsel.')
+        profile=raw.get('source_profile','dmp_1954')
+        if not isinstance(profile,str):raise ValueError('Ugyldig kortkilde.')
+        catalog.require_available(profile)
+        box,w,h=model.map_view({k:v for k,v in raw.items() if k!='source_profile'})
         if not preview_gate.acquire(False):raise HTTPException(429,'Et kortbillede hentes allerede. Prøv igen om lidt.')
         try:
             def get():
-                a=source.fetch(source.resolve(),box,w,h,crs='EPSG:3857')
+                endpoint=source.resolve() if profile=='dmp_1954' else source.resolve(profile)
+                a=source.fetch(endpoint,box,w,h,crs='EPSG:3857',source_profile=profile)
                 b=io.BytesIO();Image.fromarray(a).save(b,format='PNG');return b.getvalue()
             return Response(await asyncio.to_thread(get),media_type='image/png')
         finally:preview_gate.release()
@@ -114,7 +120,9 @@ def create_app(root=None,worker=True):
         try:
             def get():
                 w,h=model.dimensions(j); s=min(512/w,512/h)
-                a=source.fetch(source.resolve(),j['bbox'],max(1,round(w*s)),max(1,round(h*s)))
+                profile=j['source_profile']
+                endpoint=source.resolve() if profile=='dmp_1954' else source.resolve(profile)
+                a=source.fetch(endpoint,j['bbox'],max(1,round(w*s)),max(1,round(h*s)),source_profile=profile)
                 b=io.BytesIO();Image.fromarray(a).save(b,format='PNG');return b.getvalue()
             return Response(await asyncio.to_thread(get),media_type='image/png')
         finally:preview_gate.release()
