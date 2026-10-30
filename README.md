@@ -46,7 +46,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.3.1
+VERSION=1.4.0
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"
@@ -180,7 +180,7 @@ ikke et offlinekort eller en forudhentning. Kortet bruger WMS EPSG:3857 for korr
 placering i Leaflet; eksporten bruger fortsat EPSG:25832 og den valgte kildepixel.
 Oversigtsbilledet er ikke eksportens opløsning. Kildens adgangsparametre forbliver på serveren.
 
-## Flere historiske kortkilder (udviklingsversion)
+## Flere historiske kortkilder (1.4.0)
 
 Kortkilden vælges i brugerfladen, før område, prøvebillede og eksport.
 Kilde-id gemmes sammen med hvert nyt job; gamle jobs uden kilde-id fortsætter
@@ -190,7 +190,7 @@ adgangsnøgler kan ikke angives i JSON-import, API eller browser.
 | Kilde-id | Materiale | Tilgængelighed | Anbefalet eksportafstand |
 | --- | --- | --- | --- |
 | `dmp_1954` | DDO 1954, Hexagon | Standard, fungerende offentlig katalogrelation | 0,25 m/pixel |
-| `lave_maalebordsblade` | Lave målebordsblade, Datafordeleren | Aktiveres med API-nøgle | 1 m/pixel som **praktisk forslag**, ikke dokumenteret originalopløsning |
+| `lave_maalebordsblade` | Lave målebordsblade, Datafordeleren | API-nøgle og bestået automatisk billedtest | 1 m/pixel som **praktisk forslag**, ikke dokumenteret originalopløsning |
 | `lw_1944` | Luftwaffe 1944, FlyFotos.dk | Låst til verificeret adgang, rettigheder og WMS | Ikke fastlagt |
 | `ia_1945` | Allierede 1945, FlyFotos.dk | Låst til verificeret adgang, rettigheder og WMS | Ikke fastlagt |
 
@@ -203,17 +203,27 @@ https://datafordeler.dk/dataoversigt/historiske-kort-og-data/lave-maalebordsblad
 2. Angiv den **udelukkende som servermiljøvariabel** `PLOTTER_DATAFORDELER_APIKEY`
    i TrueNAS-appens konfiguration / Docker Compose. Send ikke nøglen til
    Plotters API eller indsæt den i eksportindstillinger.
-3. Genstart appen og kontrollér, at kilden nu er valgbar. Hent et lille
-   prøvebillede før et stort eksportjob.
+3. Genstart appen. Før aktivering kontrollerer serveren GetCapabilities, lag,
+   JPEG og EPSG:25832/EPSG:3857 samt et faktisk billede i begge koordinatsystemer.
+   Ved fejl forbliver kilden låst; kontrollér nøgle/adgang og genstart for nyt forsøg.
+4. Hent et lille prøvebillede før et stort eksportjob. Den automatiske test
+   kontrollerer adgang ved Aarhus, ikke dækning eller historisk årstal for hele udsnittet.
 
 Korttjenesten viser kortblade fra **1901–1971**, og det enkelte blads revision
 behøver ikke være 1940–1945. Plotter udleder derfor ikke et specifikt årstal
 for disse eksporter. Kontrollér årstal og om ønsket udsnit er dækket i kilden.
 
-FlyFotos.dk sælger særskilt WMS-adgang til LW1944 og IA_1945.
+FlyFotos.dk tilbyder særskilt WMS-adgang. LW1944 har også en offentlig
+viser med fungerende WMS, men stor eksport fra denne er ikke rettighedsafklaret.
 Begge er registreret som inaktive kilder indtil URL-format, lag, aftale og
 eksportrettigheder er bekræftet:
 https://flyfotos.dk/da-dk/Produkter/Adgang
 
 **Rettigheder:** Download og mulighed for print indebærer ikke automatisk
 tilladelse til offentliggørelse, massehentning eller deling på en spilserver.
+
+Se [verifikationsrapporten](docs/historical-sources.md) for konkrete kilder, adgangsblokeringer og teststatus.
+
+Gemte billedfelter bindes atomisk til kilde-id, BBOX, pixelafstand og koordinatsystem.
+Genoptagelse med en anden kilde/geometri afvises uden at overskrive felterne.
+Gamle jobs uden kilde-id eller manifest behandles som DDO 1954; ingen databaseændring kræves.

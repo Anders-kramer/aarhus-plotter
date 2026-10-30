@@ -36,6 +36,7 @@ def create_app(root=None,worker=True):
     jobs=Jobs(root)
     @asynccontextmanager
     async def lifespan(app):
+        if worker: await asyncio.to_thread(source.verify_optional_sources)
         if worker: jobs.start()
         yield
         jobs.close()

@@ -45,3 +45,31 @@ test('DPI menu offers full resolution and descending 50 DPI steps',()=>{
   assert.equal(el('dpi').children[1].value,'550');
   run('dpiOptions(45)');assert.equal(el('dpi').children.length,1);
 });
+
+test('changing source clears preview approval, pixels and old map',async()=>{
+  const {run,el}=setup();
+  await run(`sources=[{id:'dmp_1954',period:'1954',available:true,default_mpp:.25,meters_per_pixel:[.25,.5,1]},
+    {id:'lave_maalebordsblade',period:'1901–1971',provider:'KDS',available:true,default_mpp:1,meters_per_pixel:[.5,1,2,4]}];
+    var removed=[]; map={removeLayer(x){removed.push(x)}}; historicalLayer='old';
+    previewKey=JSON.stringify({bbox,source_profile:'dmp_1954'}); $('checked').checked=true; estimateValid=true;
+    api=async()=>({width_px:10,height_px:10,tiles:1,disk_bytes:100,paper_mm:[594,841],effective_dpi:1});
+    $('sourceProfile').value='lave_maalebordsblade'; $('sourceProfile').onchange()`);
+  assert.equal(el('checked').checked,false);
+  assert.equal(el('start').disabled,true);
+  assert.equal(el('gsd').value,'1');
+  assert.equal(run('previewKey'),'');
+  assert.equal(run('historicalLayer'),null);
+  assert.equal(run('removed[0]'),'old');
+  assert.equal(run('job().source_profile'),'lave_maalebordsblade');
+});
+
+test('late preview cannot reappear after source changes away and back',async()=>{
+  const {run,el}=setup();
+  const pending=run(`var finishPreview; api=()=>new Promise(resolve=>finishPreview=resolve); $('previewButton').onclick()`);
+  run(`$('sourceProfile').value='lave_maalebordsblade'; invalidate();
+       $('sourceProfile').value='dmp_1954'; invalidate(); finishPreview({})`);
+  await pending;
+  assert.equal(run('previewKey'),'');
+  assert.equal(el('checked').checked,false);
+  assert.equal(el('start').disabled,true);
+});

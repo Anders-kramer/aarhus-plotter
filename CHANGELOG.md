@@ -1,3 +1,11 @@
+# 1.4.0
+
+- Add historical source selection; DDO 1954 remains the default.
+- Gate Datafordeler maps on server credentials, capabilities and live image validation.
+- Keep LW1944 and IA_1945 locked pending export rights/access verification.
+- Bind resumable tile caches to source and geometry; preserve legacy 1954 jobs.
+- Prevent stale previews after source changes and preserve source metadata in GeoTIFF/PDF.
+
 # 1.3.1
 
 - Restore DDO 1954 metadata resolution using the official Datakatalog JSON:API.

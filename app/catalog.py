@@ -4,6 +4,19 @@ Optional providers are activated only after server-side credentials are installe
 The map-sheet service covers 1901–1971: it is NOT guaranteed to show 1940.
 """
 import os
+import hashlib
+
+_verified_key = None
+
+
+def datafordeler_key():
+    key = os.getenv('PLOTTER_DATAFORDELER_APIKEY', '')
+    return key if 8 <= len(key) <= 4096 and not any(c.isspace() for c in key) else ''
+
+
+def mark_verified(key):
+    global _verified_key
+    _verified_key = hashlib.sha256(key.encode()).digest() if key else None
 
 SOURCES = {
     'dmp_1954': {
@@ -20,7 +33,8 @@ SOURCES = {
         'label': 'Lave målebordsblade · topografisk kort',
         'period': '1901–1971 · årstal varierer pr. kortblad',
         'provider': 'Datafordeleren / Klimadatastyrelsen',
-        'attribution': 'Lave målebordsblade © Klimadatastyrelsen · udgaveår varierer · Print i faktisk størrelse / 100 %',
+        'attribution': 'Klimadatastyrelsen · Lave målebordsblade · CC BY 4.0 · Udsnit/resampling · udgaveår varierer',
+        'license_url': 'https://creativecommons.org/licenses/by/4.0/',
         'year': None,
         'default_mpp': 1,
         'mpp': (0.5, 1, 2, 4),
@@ -63,9 +77,9 @@ def available(profile='dmp_1954'):
     if spec['kind'] == 'dmp':
         return True
     if spec['kind'] == 'datafordeler':
-        key = os.getenv(spec['credential_env'], '')
+        key = datafordeler_key()
         # Never expose the key to the UI, logging or persisted jobs.
-        return isinstance(key, str) and 8 <= len(key) <= 4096 and not any(c.isspace() for c in key)
+        return bool(key) and _verified_key == hashlib.sha256(key.encode()).digest()
     return False
 
 
@@ -73,9 +87,14 @@ def require_available(profile='dmp_1954'):
     spec = get(profile)
     if not available(profile):
         if spec['kind'] == 'datafordeler':
-            raise ValueError('Kortkilden kræver en Datafordeler-API-nøgle på serveren.')
+            raise ValueError(datafordeler_reason())
         raise ValueError(spec['reason'])
     return spec
+
+
+def datafordeler_reason():
+    return ('Datafordeler-adgangen har ikke bestået billedtesten. Kontrollér servernøglen og genstart appen.'
+            if datafordeler_key() else 'Kræver Datafordeler-API-nøgle på serveren.')
 
 
 def catalogue():
@@ -88,9 +107,10 @@ def catalogue():
             'period': spec['period'],
             'provider': spec['provider'],
             'attribution': spec['attribution'],
+            'license_url': spec.get('license_url'),
             'available': is_ready,
             'reason': '' if is_ready else (
-                'Kræver Datafordeler-API-nøgle på serveren.'
+                datafordeler_reason()
                 if spec['kind'] == 'datafordeler' else spec['reason']),
             'default_mpp': spec['default_mpp'],
             'meters_per_pixel': list(spec['mpp']),

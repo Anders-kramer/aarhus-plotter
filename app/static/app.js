@@ -13,6 +13,7 @@ let bbox = [573235, 6222400, 576535, 6226600],
   profiles = [],
   sources = [],
   previewKey = "",
+  previewRevision = 0,
   timer,
   estimateValid = false,
   revision = 0;
@@ -79,12 +80,13 @@ function sourceOptions() {
     (s.available ? " · Kontrollér udgaveår og faktisk dækning." : " · "+s.reason);
 }
 function invalidate() {
+  ++previewRevision;
   previewKey = "";
   $("checked").checked = false;
   $("start").disabled = true;
   $("previewBox").replaceChildren(
     Object.assign(document.createElement("span"), {
-      textContent: "Området er ændret — hent et nyt prøvebillede",
+      textContent: "Kilde eller område er ændret — hent et nyt prøvebillede",
     }),
   );
 }
@@ -120,13 +122,13 @@ async function refreshEstimate() {
     $("bbox").value = bbox.map((x) => x.toFixed(2)).join(", ");
     $("estimate").replaceChildren();
     const p = document.createElement("p");
-    p.textContent = `${e.width_px.toLocaleString("da")} × ${e.height_px.toLocaleString("da")} oprindelige pixels · ca. ${e.tiles} billedforespørgsler`;
+    p.textContent = `${e.width_px.toLocaleString("da")} × ${e.height_px.toLocaleString("da")} eksportpixels · ca. ${e.tiles} billedforespørgsler`;
     $("estimate").append(p);
     for (const text of [
       `Ca. ${(e.disk_bytes / 1e9).toFixed(1)} GB diskreserve. Komprimering og midlertidige filer gør behovet usikkert.`,
       `Ledigt på serveren: ${(e.free_disk_bytes / 1e9).toFixed(1)} GB.${e.free_disk_bytes < e.disk_bytes ? " Der skal frigøres plads før dette job kan køre." : ""}`,
       ...(e.duration_seconds ? [`Anslået behandlingstid: ${duration(e.duration_seconds[0])} – ${duration(e.duration_seconds[1])}.`, e.duration_basis] : []),
-      `Kildens maksimale opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm.`,
+      `Rasterets opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm. Pixelafstand er ikke et mål for originalens detaljegrad.`,
       ...(e.pdf_width_px ? [`PDF: ${e.pdf_width_px.toLocaleString("da")} × ${e.pdf_height_px.toLocaleString("da")} pixels · ${e.pdf_dpi} DPI.`,
         e.pdf_width_px===e.width_px && e.pdf_height_px===e.height_px
           ? "Alle kildepixels bevares uden nedskalering eller ekstra JPEG-komprimering."
@@ -365,9 +367,10 @@ $("previewButton").onclick = async () => {
   const j = job(),
     key = JSON.stringify({bbox:j.bbox,source_profile:j.source_profile});
   $("previewButton").disabled = true;
+  const requestRevision = previewRevision;
   try {
     const b = await api("preview", j);
-    if (key !== JSON.stringify({bbox,source_profile:$("sourceProfile").value})) return;
+    if (requestRevision !== previewRevision || key !== JSON.stringify({bbox,source_profile:$("sourceProfile").value})) return;
     const im = document.createElement("img");
     im.alt = currentSource().label + " for det valgte område";
     const url = URL.createObjectURL(b);
@@ -376,6 +379,7 @@ $("previewButton").onclick = async () => {
     $("previewBox").replaceChildren(im);
     previewKey = key;
     $("checked").checked = false;
+    updateStart();
     message("Kontrollér motivet og markér feltet under billedet.");
   } catch (e) {
     message(e.message);
@@ -423,6 +427,7 @@ $("import").onchange = async (e) => {
     $("dpi").value = typeof j.dpi === "number" && j.dpi % 50 === 0 && j.dpi < importedEstimate.native_dpi ? String(j.dpi) : "full";
     invalidate();
     await rectangle();
+    queueMapImage();
     message("Jobbet er indlæst. Kontrollér et nyt prøvebillede før start.");
   } catch (e) {
     message(e.message);
@@ -455,6 +460,10 @@ async function listJobs() {
         title = document.createElement("strong");
       title.textContent = j.config.title;
       info.append(title);
+      const sourceInfo = document.createElement("p");
+      const savedSource = sources.find(s => s.id === (j.config.source_profile || "dmp_1954"));
+      sourceInfo.textContent = savedSource ? `${savedSource.label} · ${savedSource.period}` : j.config.source_profile;
+      info.append(sourceInfo);
       const p = document.createElement("p");
       p.textContent = `${states[j.state]} · ${j.done}/${j.total} i fasen · ${Math.floor(j.elapsed / 60)} min ${Math.floor(j.elapsed % 60)} sek. arbejdstid`;
       info.append(p);

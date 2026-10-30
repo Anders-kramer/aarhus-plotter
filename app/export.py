@@ -2,6 +2,7 @@
 import io
 import os
 import shutil
+import json
 from pathlib import Path
 import numpy as np
 import rasterio
@@ -31,12 +32,32 @@ def image_atomic(arr,path):
     Image.fromarray(arr).save(tmp,format='PNG')
     publish(tmp,path)
 
+def bind_spool(j,folder,spool):
+    """Bind cached pixels to their source and geometry, not transient credentials."""
+    identity={'version':1,'source_profile':j.get('source_profile','dmp_1954'),
+              'crs':'EPSG:25832','bbox':j['bbox'],'meters_per_pixel':j['meters_per_pixel'],
+              'tile_px':1024}
+    path=folder/'tile-source.json'
+    if path.exists():
+        try: previous=json.loads(path.read_text(encoding='utf-8'))
+        except (ValueError,OSError):raise ValueError('Billedfelternes kildeidentitet kunne ikke læses. Opret et nyt job.') from None
+        if previous!=identity:
+            raise ValueError('Billedfelterne tilhører en anden kilde eller geometri. Opret et nyt job.')
+        return
+    # Pre-1.4 production jobs can only contain 1954 tiles. Never adopt them for another source.
+    if identity['source_profile']!='dmp_1954' and any(spool.iterdir()):
+        raise ValueError('Eksisterende billedfelter mangler kildeidentitet. Opret et nyt job.')
+    tmp=path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(identity,sort_keys=True),encoding='utf-8')
+    publish(tmp,path)
+
 def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     folder=Path(folder); spool=folder/'tiles'; spool.mkdir(parents=True,exist_ok=True)
     sync_dir(folder); sync_dir(folder.parent)
     parts=list(model.tiles(j)); w,h=model.dimensions(j)
     profile=j.get('source_profile','dmp_1954')
     spec=catalog.get(profile)
+    bind_spool(j,folder,spool)
     disk(folder,model.estimate(j)['disk_bytes'])
     endpoint=None
     progress('downloading',0,len(parts))
@@ -60,7 +81,10 @@ def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     with rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tmp,'w',driver='GTiff',width=w,height=h,count=3,
             dtype='uint8',crs='EPSG:25832',transform=from_bounds(*j['bbox'],w,h),
             tiled=True,blockxsize=256,blockysize=256,compress='deflate',BIGTIFF='YES' if w*h*3>=4_000_000_000 else 'IF_SAFER') as ds:
-        tags={'SOURCE':spec['provider'], 'PERIOD':spec['period']}
+        tags={'SOURCE':spec['provider'], 'SOURCE_PROFILE':profile,'PERIOD':spec['period'],
+              'ATTRIBUTION':spec['attribution'],'PIXEL_SIZE_METRES':str(j['meters_per_pixel']),
+              'RESOLUTION_NOTE':'Output pixel spacing; not a measurement of original source detail.'}
+        if spec.get('license_url'):tags['LICENSE_URL']=spec['license_url']
         if spec['year']: tags['YEAR']=spec['year']
         if profile=='dmp_1954':
             tags['SOURCE']='DDO 1954 / Hexagon'

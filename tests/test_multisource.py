@@ -23,7 +23,7 @@ def test_catalogue_shows_locked_sources(monkeypatch):
     assert not entries['lave_maalebordsblade']['available']
     assert not entries['lw_1944']['available']
     assert not entries['ia_1945']['available']
-    assert not hasattr(entries['dmp_1954'],'url')
+    assert 'url' not in entries['dmp_1954']
     assert model.validate(base())['source_profile']=='dmp_1954'
     with pytest.raises(ValueError):
         model.validate(base(source_profile='lave_maalebordsblade'))
@@ -34,6 +34,8 @@ def test_catalogue_shows_locked_sources(monkeypatch):
 
 def test_datafordeler_wms_key_stays_on_server(monkeypatch):
     monkeypatch.setenv('PLOTTER_DATAFORDELER_APIKEY','test-secret-value')
+    monkeypatch.setattr(catalog,'_verified_key',None)
+    catalog.mark_verified('test-secret-value')
     j=model.validate(base(source_profile='lave_maalebordsblade'))
     assert j['meters_per_pixel']==1
     assert 'test-secret-value' not in str(j)
@@ -69,6 +71,8 @@ def test_datafordeler_wms_key_stays_on_server(monkeypatch):
 
 def test_historical_export_metadata_and_pdf(tmp_path,monkeypatch):
     monkeypatch.setenv('PLOTTER_DATAFORDELER_APIKEY','test-secret-value')
+    monkeypatch.setattr(catalog,'_verified_key',None)
+    catalog.mark_verified('test-secret-value')
     j=model.validate(base(source_profile='lave_maalebordsblade',meters_per_pixel=2))
     assert model.dimensions(j)==(8,8)
     def tile(endpoint,box,w,h,**kwargs):
@@ -87,6 +91,8 @@ def test_historical_export_metadata_and_pdf(tmp_path,monkeypatch):
 
 def test_source_selection_api(monkeypatch,tmp_path):
     monkeypatch.setenv('PLOTTER_DATAFORDELER_APIKEY','test-secret-value')
+    monkeypatch.setattr(catalog,'_verified_key',None)
+    catalog.mark_verified('test-secret-value')
     calls=[]
     monkeypatch.setattr(source,'resolve',lambda profile='dmp_1954': calls.append(('resolve',profile)) or 'opaque')
     def image(endpoint,box,w,h,**kw):
