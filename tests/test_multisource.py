@@ -39,6 +39,7 @@ def test_datafordeler_wms_key_stays_on_server(monkeypatch):
     assert 'test-secret-value' not in str(j)
     assert 'test-secret-value' not in str(catalog.catalogue())
     assert j['source_profile']=='lave_maalebordsblade'
+    assert '1954' not in j['title']
     endpoint=source.resolve('lave_maalebordsblade')
     uri=urlsplit(endpoint)
     assert uri.netloc=='wms.datafordeler.dk'
