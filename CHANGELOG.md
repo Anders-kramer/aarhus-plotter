@@ -1,3 +1,9 @@
+# 1.3.1
+
+- Restore DDO 1954 metadata resolution using the official Datakatalog JSON:API.
+- Validate the linked WMS resource and retain credential-safe errors.
+- Add metadata regression tests; preserve existing jobs, tiles and database schema.
+
 # 1.3.0
 
 - Open the local app directly without password login. Same-origin request checks remain enabled.
