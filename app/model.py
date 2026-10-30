@@ -40,7 +40,7 @@ def validate(raw):
          'meters_per_pixel':raw.get('meters_per_pixel',spec['default_mpp']),
          'paper':raw.get('paper','A1'),'orientation':raw.get('orientation','auto'),
          'dpi':raw.get('dpi','full'),'margin_mm':raw.get('margin_mm',8),
-         'title':raw.get('title','Aarhus 1954')}
+         'title':raw.get('title','Aarhus 1954' if profile=='dmp_1954' else 'Aarhus · '+spec['label'])}
     if type(j['meters_per_pixel']) not in (int,float) or any(not isinstance(j[k],str) for k in ('paper','orientation')):
         raise ValueError('Indstillingerne har forkert datatype.')
     for key,choices in [('meters_per_pixel',spec['mpp']),('paper',PAPERS),('orientation',('auto','portrait','landscape'))]:
