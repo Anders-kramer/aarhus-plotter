@@ -9,7 +9,7 @@ from rasterio.transform import from_bounds
 from rasterio.windows import Window
 from rasterio.enums import Resampling
 from PIL import Image
-from . import model, source
+from . import model, source, catalog
 from .pdf_writer import RasterPDF
 
 def sync_dir(p):
@@ -35,6 +35,8 @@ def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     folder=Path(folder); spool=folder/'tiles'; spool.mkdir(parents=True,exist_ok=True)
     sync_dir(folder); sync_dir(folder.parent)
     parts=list(model.tiles(j)); w,h=model.dimensions(j)
+    profile=j.get('source_profile','dmp_1954')
+    spec=catalog.get(profile)
     disk(folder,model.estimate(j)['disk_bytes'])
     endpoint=None
     progress('downloading',0,len(parts))
@@ -47,8 +49,9 @@ def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
                 with Image.open(path) as im: valid=im.size==(tw,th); im.load()
             except (OSError,ValueError): valid=False
         if not valid:
-            if endpoint is None: endpoint=resolve()
-            arr=fetch(endpoint,box,tw,th,check=check)
+            if endpoint is None:
+                endpoint=resolve() if profile=='dmp_1954' else resolve(profile)
+            arr=fetch(endpoint,box,tw,th,check=check,source_profile=profile)
             check(); image_atomic(arr,path)
         progress('downloading',i+1,len(parts))
     endpoint=None
@@ -57,7 +60,12 @@ def run(j,folder,progress,check,fetch=source.fetch,resolve=source.resolve):
     with rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tmp,'w',driver='GTiff',width=w,height=h,count=3,
             dtype='uint8',crs='EPSG:25832',transform=from_bounds(*j['bbox'],w,h),
             tiled=True,blockxsize=256,blockysize=256,compress='deflate',BIGTIFF='YES' if w*h*3>=4_000_000_000 else 'IF_SAFER') as ds:
-        ds.update_tags(YEAR='1954',SOURCE='DDO 1954 / Hexagon',DESCRIPTION='Efterkrigsmateriale')
+        tags={'SOURCE':spec['provider'], 'PERIOD':spec['period']}
+        if spec['year']: tags['YEAR']=spec['year']
+        if profile=='dmp_1954':
+            tags['SOURCE']='DDO 1954 / Hexagon'
+            tags['DESCRIPTION']='Efterkrigsmateriale'
+        ds.update_tags(**tags)
         for i,(x,y,tw,th,box) in enumerate(parts):
             check(); disk(folder)
             with Image.open(spool/f'{x}_{y}.png') as im:
@@ -80,12 +88,13 @@ def make_pdf(j,tif,output,progress,check):
     output=Path(output); tmp=output.with_suffix('.partial.pdf'); mm=72/25.4
     progress('pdf',0,len(chunks))
     with open(tmp,'wb') as f, rasterio.Env(GDAL_CACHEMAX=64_000_000), rasterio.open(tif) as ds:
-        c=RasterPDF(f,pw*mm,ph*mm,j['title'],model.ATTRIBUTION)
+        attribution=catalog.get(j.get('source_profile','dmp_1954'))['attribution']
+        c=RasterPDF(f,pw*mm,ph*mm,j['title'],attribution)
         for i,(x,y,cw,ch) in enumerate(chunks):
             check(); disk(output.parent)
             a=ds.read(window=Window(x*w/W,y*h/H,cw*w/W,ch*h/H),out_shape=(3,ch,cw),resampling=Resampling.bilinear)
             c.image(np.moveaxis(a,0,-1).tobytes(),cw,ch,(sx+x*mw/W)*mm,(sy+(H-y-ch)*mh/H)*mm,
                     cw*mw/W*mm,ch*mh/H*mm)
             progress('pdf',i+1,len(chunks))
-        check(); c.finish(model.ATTRIBUTION)
+        check(); c.finish(attribution)
     check(); publish(tmp,output)
