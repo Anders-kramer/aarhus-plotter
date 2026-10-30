@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 function setup() {
   const elements = new Map();
-  const values = {paper:'A1',orientation:'auto',dpi:'200',gsd:'0.25',margin:'8',title:'Test'};
+  const values = {paper:'A1',orientation:'auto',dpi:'200',gsd:'0.25',margin:'8',title:'Test',sourceProfile:'dmp_1954'};
   const document = {getElementById(id) {
     if (!elements.has(id)) elements.set(id,{value:values[id],checked:false,textContent:'',children:[],replaceChildren(){this.textContent='';this.children=[];},append(child){this.children.push(child);}});
     return elements.get(id);
@@ -21,7 +21,7 @@ test('invalid request replaces stale estimates and cannot export', async()=>{
   assert.equal(el('size').textContent,'8.00 × 10.00 km');
   assert.equal(el('bbox').value,'571768.00, 6220363.00, 579768.00, 6230363.00');
   assert.equal(el('estimate').textContent,'Invalid settings');
-  run('previewKey=JSON.stringify(bbox); $("checked").checked=true; updateStart()');
+  run('previewKey=JSON.stringify({bbox,source_profile:$("sourceProfile").value}); $("checked").checked=true; updateStart()');
   assert.equal(el('start').disabled,true);
   await run('$("gsd").value="0.5"; api=async()=>({width_px:16000,height_px:20000,tiles:320,disk_bytes:1e9,paper_mm:[594,841],effective_dpi:100}); refreshEstimate()');
   assert.equal(el('start').disabled,false);
