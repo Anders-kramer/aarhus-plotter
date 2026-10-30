@@ -46,7 +46,7 @@ Et færdigbygget Linux/AMD64-image findes også som offentligt releasearkiv.
 Det kan installeres uden registry-login:
 
 ```bash
-VERSION=1.3.0
+VERSION=1.3.1
 RELEASE_URL="https://github.com/Anders-kramer/aarhus-plotter/releases/download/v$VERSION"
 curl -fLO "$RELEASE_URL/aarhus-plotter-$VERSION-linux-amd64.tar.gz"
 curl -fLO "$RELEASE_URL/truenas.yaml"
@@ -131,7 +131,7 @@ Print i faktisk størrelse / 100 %. Gamle jobs med 240 DPI kan fortsat genoptage
 ## Kilde og billedrettigheder
 
 1954-kilden findes dynamisk fra
-[Miljøportalens officielle metadata](https://arealdata-api.miljoeportal.dk/datasets/urn:dmp:ds:ortofoto-1954).
+[Miljøportalens officielle metadata](https://datakatalog.miljoeportal.dk/api/datasets/urn%3Admp%3Ads%3Aortofoto-1954?include=wmsSource).
 Kun den kendte HTTPS-vært, WMS-sti og lag accepteres. Adgangsparametre
 holdes i serverens hukommelse og gemmes ikke i jobs, logs eller eksportmetadata.
 De indgår ikke i identiteten af de gemte billedfelter.
