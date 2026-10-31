@@ -11,13 +11,15 @@ let bbox = [573235, 6222400, 576535, 6226600],
   rect,
   group,
   profiles = [],
+  sources = [],
   previewKey = "",
+  previewRevision = 0,
   timer,
   estimateValid = false,
   revision = 0;
 function updateStart() {
   $("start").disabled = !estimateValid || !$("checked").checked ||
-    previewKey !== JSON.stringify(bbox) || !!editor;
+    previewKey !== JSON.stringify({bbox,source_profile:$("sourceProfile").value}) || !!editor;
 }
 function duration(seconds) {
   if (seconds < 60) return "under 1 min";
@@ -51,6 +53,7 @@ async function api(path, data) {
 function job() {
   return {
     bbox: bbox.slice(),
+    source_profile: $("sourceProfile").value || "dmp_1954",
     paper: $("paper").value,
     orientation: $("orientation").value,
     dpi: $("dpi").value === "full" ? "full" : Number($("dpi").value),
@@ -59,13 +62,37 @@ function job() {
     title: $("title").value,
   };
 }
+function currentSource() {
+  return sources.find(s => s.id === $("sourceProfile").value) || sources[0] ||
+    {id:"dmp_1954",period:"1954",label:"DDO 1954"};
+}
+function sourceOptions() {
+  const s=currentSource(), gs=$("gsd");
+  gs.replaceChildren();
+  for (const value of s.meters_per_pixel || [0.25,0.5,1]) {
+    const o=document.createElement("option");
+    o.value=String(value);
+    o.textContent=value.toLocaleString("da")+" meter";
+    gs.append(o);
+  }
+  gs.value=String(s.default_mpp || .25);
+  $("sourceHelp").textContent=s.period+" · "+s.provider+
+    (s.available ? " · Kontrollér udgaveår og faktisk dækning." : " · "+s.reason);
+  if (s.license_url) {
+    const link=document.createElement("a");
+    link.href=s.license_url; link.textContent=" · Licens";
+    link.target="_blank"; link.rel="noopener";
+    $("sourceHelp").append(link);
+  }
+}
 function invalidate() {
+  ++previewRevision;
   previewKey = "";
   $("checked").checked = false;
   $("start").disabled = true;
   $("previewBox").replaceChildren(
     Object.assign(document.createElement("span"), {
-      textContent: "Området er ændret — hent et nyt prøvebillede",
+      textContent: "Kilde eller område er ændret — hent et nyt prøvebillede",
     }),
   );
 }
@@ -101,13 +128,13 @@ async function refreshEstimate() {
     $("bbox").value = bbox.map((x) => x.toFixed(2)).join(", ");
     $("estimate").replaceChildren();
     const p = document.createElement("p");
-    p.textContent = `${e.width_px.toLocaleString("da")} × ${e.height_px.toLocaleString("da")} oprindelige pixels · ca. ${e.tiles} billedforespørgsler`;
+    p.textContent = `${e.width_px.toLocaleString("da")} × ${e.height_px.toLocaleString("da")} eksportpixels · ca. ${e.tiles} billedforespørgsler`;
     $("estimate").append(p);
     for (const text of [
       `Ca. ${(e.disk_bytes / 1e9).toFixed(1)} GB diskreserve. Komprimering og midlertidige filer gør behovet usikkert.`,
       `Ledigt på serveren: ${(e.free_disk_bytes / 1e9).toFixed(1)} GB.${e.free_disk_bytes < e.disk_bytes ? " Der skal frigøres plads før dette job kan køre." : ""}`,
       ...(e.duration_seconds ? [`Anslået behandlingstid: ${duration(e.duration_seconds[0])} – ${duration(e.duration_seconds[1])}.`, e.duration_basis] : []),
-      `Kildens maksimale opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm.`,
+      `Rasterets opløsning på papir: ${e.effective_dpi} DPI. Papir: ${e.paper_mm.join(" × ")} mm. Pixelafstand er ikke et mål for originalens detaljegrad.`,
       ...(e.pdf_width_px ? [`PDF: ${e.pdf_width_px.toLocaleString("da")} × ${e.pdf_height_px.toLocaleString("da")} pixels · ${e.pdf_dpi} DPI.`,
         e.pdf_width_px===e.width_px && e.pdf_height_px===e.height_px
           ? "Alle kildepixels bevares uden nedskalering eller ekstra JPEG-komprimering."
@@ -172,15 +199,16 @@ async function loadMapImage() {
   const rev = mapRevision, bounds = map.getBounds(), size = map.getSize();
   const scale = Math.min(1, 1024 / size.x, 1024 / size.y);
   mapBusy = true;
-  $("mapStatus").textContent = "Henter historisk kort · 1954…";
+  $("mapStatus").textContent = "Henter " + currentSource().label + "…";
   try {
     const blob = await api("map-image", {
       bbox:[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()],
-      width:Math.max(8,Math.round(size.x * scale)), height:Math.max(8,Math.round(size.y * scale))
+      width:Math.max(8,Math.round(size.x * scale)), height:Math.max(8,Math.round(size.y * scale)),
+       source_profile: $("sourceProfile").value || "dmp_1954"
     });
     if (rev !== mapRevision || $("background").value !== "historical") return;
     const url = URL.createObjectURL(blob);
-    const layer = L.imageOverlay(url,bounds,{opacity:1,interactive:false,attribution:"DDO 1954 © Hexagon"});
+    const layer = L.imageOverlay(url,bounds,{opacity:1,interactive:false,attribution:currentSource().attribution});
     layer.once("load",()=>{
       if (rev !== mapRevision || $("background").value !== "historical") {
         map.removeLayer(layer); URL.revokeObjectURL(url); return;
@@ -189,7 +217,7 @@ async function loadMapImage() {
       if (mapImageUrl) URL.revokeObjectURL(mapImageUrl);
       historicalLayer=layer; mapImageUrl=url;
       layer.bringToBack(); if(rect) rect.bringToFront();
-      $("mapStatus").textContent="HISTORISK LUFTFOTO · 1954 · DDO © Hexagon · zoom ind for flere detaljer";
+      $("mapStatus").textContent=currentSource().label+" · zoom ind for flere detaljer";
     });
     layer.addTo(map);
   } catch(e) {
@@ -212,10 +240,32 @@ $("background").onchange=()=>{
   }
 };
 $("reloadMap").onclick=queueMapImage;
+$("sourceProfile").onchange = async () => {
+  ++mapRevision; clearTimeout(mapTimer);
+  if (historicalLayer) {map.removeLayer(historicalLayer);historicalLayer=null;}
+  if (mapImageUrl) {URL.revokeObjectURL(mapImageUrl);mapImageUrl=null;}
+  sourceOptions();
+  $("title").value="Aarhus · "+currentSource().period.split(" · ")[0];
+  invalidate();
+  await refreshEstimate();
+  queueMapImage();
+};
 async function boot() {
   try {
     const cfg = await api("config");
     profiles = cfg.profiles;
+    sources = cfg.sources || [{id:"dmp_1954",label:"DDO 1954",period:"1954",
+      provider:"Hexagon",available:true,default_mpp:.25,meters_per_pixel:[.25,.5,1]}];
+    $("sourceProfile").replaceChildren();
+    for (const s of sources) {
+      const option=document.createElement("option");
+      option.value=s.id;
+      option.disabled=!s.available;
+      option.textContent=s.label+(s.available ? "" : " · ikke tilgængelig");
+      $("sourceProfile").append(option);
+    }
+    $("sourceProfile").value="dmp_1954";
+    sourceOptions();
     $("workspace").hidden = false;
     if (!map) {
       for (const p of profiles) {
@@ -256,7 +306,7 @@ $("profile").onchange = async () => {
   if ($("profile").selectedIndex === profiles.length) return;
   const [name, x, y, w, h] = profiles[$("profile").selectedIndex];
   bbox = [x - w * 500, y - h * 500, x + w * 500, y + h * 500];
-  $("title").value = name + " · 1954";
+  $("title").value = name + " · " + currentSource().period.split(" · ")[0];
   invalidate();
   await rectangle();
 };
@@ -321,19 +371,21 @@ for (const id of ["paper", "orientation", "dpi", "gsd", "margin", "title"])
   $(id).onchange = refreshEstimate;
 $("previewButton").onclick = async () => {
   const j = job(),
-    key = JSON.stringify(j.bbox);
+    key = JSON.stringify({bbox:j.bbox,source_profile:j.source_profile});
   $("previewButton").disabled = true;
+  const requestRevision = previewRevision;
   try {
     const b = await api("preview", j);
-    if (key !== JSON.stringify(bbox)) return;
+    if (requestRevision !== previewRevision || key !== JSON.stringify({bbox,source_profile:$("sourceProfile").value})) return;
     const im = document.createElement("img");
-    im.alt = "Historisk luftfoto fra 1954 for det valgte område";
+    im.alt = currentSource().label + " for det valgte område";
     const url = URL.createObjectURL(b);
     im.onload = () => URL.revokeObjectURL(url);
     im.src = url;
     $("previewBox").replaceChildren(im);
     previewKey = key;
     $("checked").checked = false;
+    updateStart();
     message("Kontrollér motivet og markér feltet under billedet.");
   } catch (e) {
     message(e.message);
@@ -362,6 +414,12 @@ $("import").onchange = async (e) => {
     const j = JSON.parse(await f.text());
     const importedEstimate = await api("estimate", j);
     bbox = j.bbox;
+    $("sourceProfile").value=j.source_profile || "dmp_1954";
+    sourceOptions();
+    if (j.meters_per_pixel !== undefined) $("gsd").value=String(j.meters_per_pixel);
+    ++mapRevision;
+    if (historicalLayer) {map.removeLayer(historicalLayer);historicalLayer=null;}
+    if (mapImageUrl) {URL.revokeObjectURL(mapImageUrl);mapImageUrl=null;}
     $("profile").selectedIndex = profiles.length;
     for (const [id, key] of [
       ["paper", "paper"],
@@ -375,6 +433,7 @@ $("import").onchange = async (e) => {
     $("dpi").value = typeof j.dpi === "number" && j.dpi % 50 === 0 && j.dpi < importedEstimate.native_dpi ? String(j.dpi) : "full";
     invalidate();
     await rectangle();
+    queueMapImage();
     message("Jobbet er indlæst. Kontrollér et nyt prøvebillede før start.");
   } catch (e) {
     message(e.message);
@@ -407,6 +466,10 @@ async function listJobs() {
         title = document.createElement("strong");
       title.textContent = j.config.title;
       info.append(title);
+      const sourceInfo = document.createElement("p");
+      const savedSource = sources.find(s => s.id === (j.config.source_profile || "dmp_1954"));
+      sourceInfo.textContent = savedSource ? `${savedSource.label} · ${savedSource.period}` : j.config.source_profile;
+      info.append(sourceInfo);
       const p = document.createElement("p");
       p.textContent = `${states[j.state]} · ${j.done}/${j.total} i fasen · ${Math.floor(j.elapsed / 60)} min ${Math.floor(j.elapsed % 60)} sek. arbejdstid`;
       info.append(p);

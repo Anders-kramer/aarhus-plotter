@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Aarhus Plotter · 1954</title>
+    <title>Aarhus Plotter · historiske kort</title>
     <link rel="stylesheet" href="/vendor/leaflet.css" />
     <link rel="stylesheet" href="/vendor/leaflet.draw.css" />
     <link rel="stylesheet" href="/style.css" />
@@ -12,7 +12,7 @@
     <header>
       <a class="brand" href="/"
         >AP<span>AARHUS<br />PLOTTER</span></a
-      ><span class="tag">KORTVÆRKSTED · 1954</span
+      ><span class="tag">KORTVÆRKSTED</span
       >
     </header>
     <main>
@@ -26,8 +26,7 @@
           </p>
         </div>
         <aside>
-          1954 er efterkrigsmateriale.<br />Ikke et autentisk luftfoto fra
-          1940–1945.
+          Vælg mellem historiske kortkilder.<br />Kontrollér udgaveår og dækning før eksport.
         </aside>
       </section>
       <div id="workspace" hidden>
@@ -41,11 +40,14 @@
               <h2>01 · Dit område</h2>
               <span id="size" class="tag"></span>
             </div>
+            <label for="sourceProfile">Historisk kortkilde</label>
+            <select id="sourceProfile"></select>
+            <p id="sourceHelp" class="hint" role="status"></p>
             <label class="sr" for="profile">Navngivet område</label
             ><select id="profile"></select>
             <label for="background">Kortbaggrund</label>
             <select id="background">
-              <option value="historical">Historisk luftfoto · 1954</option>
+              <option value="historical">Valgt historisk kortkilde</option>
               <option value="modern">Moderne orienteringskort</option>
             </select>
             <div class="toolbar">
@@ -62,7 +64,7 @@
               aria-label="Interaktivt kort til valg af område"
             ></div>
             <p class="map-label" id="mapStatus" role="status">
-              HISTORISK LUFTFOTO · 1954 · DDO © Hexagon
+              HISTORISK KORT · VÆLG KILDE
             </p>
             <button id="reloadMap">Opdatér kortbillede</button>
             <details>
@@ -72,12 +74,12 @@
             </details>
           </section>
           <section class="panel settings">
-            <h2>02 · Se tilbage til 1954</h2>
+            <h2>02 · Kontrollér historisk kort</h2>
             <p>
               Hent ét lille prøvebillede af rammen. Kontrollér motiv og dækning
               før eksport.
             </p>
-            <button id="previewButton">Hent 1954-prøvebillede</button>
+            <button id="previewButton">Hent prøvebillede</button>
             <div id="previewBox" class="preview">
               <span>Dit historiske udsnit vises her</span>
             </div>
@@ -107,8 +109,7 @@
               ><label
                 >Kildepixel<select id="gsd">
                   <option value="0.25">0,25 meter</option>
-                  <option value="0.5">0,5 meter</option>
-                  <option value="1">1 meter</option>
+                  
                 </select></label
               ><label
                 >Margen i mm<input
@@ -149,11 +150,12 @@
         <section class="rights">
           <h2>Billederne har deres egen historie — og rettigheder</h2>
           <p>
-            DDO® 1954 © Hexagon. Digitale kopier er til dig selv og din
-            husstand. Privat print kan bruges af dig og din nære kreds. Du skal
-            selv foretage kopieringen. Afklar ekstern printbutik, offentlig
-            deling og anden brug med rettighedshaver. En eksportfunktion er ikke
-            en tilladelse til ubegrænset massehentning.
+            Kilderne har forskellige vilkår. DDO® 1954 © Hexagon har særlige
+            begrænsninger for digitale kopier og deling. Datafordelerens
+            målebordsblade har særskilte vilkår. LW1944 og IA_1945 er låst, indtil
+            adgang og eksportrettigheder er dokumenteret. Afklar rettigheder, før du deler
+            eksportfiler med andre; adgang til en WMS giver ikke automatisk
+            ret til at massehente eller videreudgive materialet.
           </p>
           <a
             href="https://miljoeportal.dk/dataansvar/saerlige-vilkaar-for-brug-i-datakataloget/"
@@ -174,6 +176,6 @@
     </footer>
     <script src="/vendor/leaflet.js"></script>
     <script src="/vendor/leaflet.draw.js"></script>
-    <script src="/app.js?v=1.3.0"></script>
+    <script src="/app.js?v=1.4.0"></script>
   </body>
 </html>

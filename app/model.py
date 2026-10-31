@@ -1,6 +1,7 @@
 """Only non-secret, canonical export settings cross the API boundary."""
 import math
 from pyproj import Transformer
+from . import catalog
 
 PAPERS = {'A0': (841,1189), 'A1': (594,841), 'A2': (420,594), 'A3': (297,420)}
 PROFILES = [
@@ -25,21 +26,24 @@ def validate(raw):
     # Legacy addresses are accepted only as known, query-free identifiers. Never requested.
     if raw.get('endpoint') not in (None,'','https://services.hxgncontent.com/streaming/wms') or raw.get('extra_params'):
         raise ValueError('Fjern WMS-adresse og adgangsparametre. Appen bruger kun den officielle kilde.')
-    if raw.get('source_profile','dmp_1954') != 'dmp_1954' or raw.get('crs','EPSG:25832') != 'EPSG:25832':
-        raise ValueError('Kun 1954-kilden og EPSG:25832 understøttes.')
+    profile=raw.get('source_profile','dmp_1954')
+    if not isinstance(profile,str) or raw.get('crs','EPSG:25832')!='EPSG:25832':
+        raise ValueError('Ugyldig kortkilde eller koordinatsystem.')
+    spec=catalog.require_available(profile)
     b = raw.get('bbox')
     if not isinstance(b,list) or len(b)!=4 or any(type(v) not in (int,float) or not math.isfinite(v) for v in b):
         raise ValueError('Angiv fire endelige BBOX-tal.')
     x0,y0,x1,y1=b
     if not (555000<=x0<x1<=595000 and 6200000<=y0<y1<=6250000):
         raise ValueError('Området skal ligge omkring Aarhus og have positiv størrelse.')
-    j = {'bbox':b,'meters_per_pixel':raw.get('meters_per_pixel',0.25),
+    j = {'bbox':b,'source_profile':profile,
+         'meters_per_pixel':raw.get('meters_per_pixel',spec['default_mpp']),
          'paper':raw.get('paper','A1'),'orientation':raw.get('orientation','auto'),
          'dpi':raw.get('dpi','full'),'margin_mm':raw.get('margin_mm',8),
-         'title':raw.get('title','Aarhus 1954')}
+         'title':raw.get('title','Aarhus 1954' if profile=='dmp_1954' else 'Aarhus · '+spec['label'])}
     if type(j['meters_per_pixel']) not in (int,float) or any(not isinstance(j[k],str) for k in ('paper','orientation')):
         raise ValueError('Indstillingerne har forkert datatype.')
-    for key,choices in [('meters_per_pixel',(0.25,0.5,1)),('paper',PAPERS),('orientation',('auto','portrait','landscape'))]:
+    for key,choices in [('meters_per_pixel',spec['mpp']),('paper',PAPERS),('orientation',('auto','portrait','landscape'))]:
         if j[key] not in choices or isinstance(j[key],bool):
             raise ValueError('Ugyldig indstilling: '+key)
     # 240 remains readable for jobs created by older versions.

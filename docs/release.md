@@ -1,5 +1,7 @@
-Aarhus Plotter 1.3.1
+Aarhus Plotter 1.4.0
 
-Fixes DDO 1954 previews and exports after the old metadata endpoint started returning HTTP 404. Resolves the linked WMS source through the official Datakatalog JSON:API, retaining strict provider validation and credential masking.
+Historical source selection with DDO 1954 retained as the default. Existing jobs, tiles and database remain compatible. GeoTIFF metadata identifies the source, period, attribution and output pixel spacing.
 
-No job format or database schema changes. Existing jobs and tiles are preserved. Before updating TrueNAS, verify the new image separately, stop the app and back up the complete data directory. Keep the existing bind mount and port; change only the image version. Version 1.3.0 remains available for rollback.
+Lave målebordsblade requires a server-side PLOTTER_DATAFORDELER_APIKEY and successful automatic GetCapabilities and image checks in EPSG:25832 and EPSG:3857. No live authenticated Datafordeler test was possible for this release: no key is available. LW1944 and IA_1945 remain locked pending verified export rights/access. This release does not claim three new ready-to-export sources.
+
+Tile manifests prevent cross-source/geometry reuse. Source switches invalidate preview approval, including late responses. No database schema migration. Back up the complete app dataset before updating and preserve the data bind mount. Do not interrupt active exports.

@@ -3,7 +3,7 @@
 # Do not expose this HTTP service to the internet.
 services:
   plotter:
-    image: ghcr.io/anders-kramer/aarhus-plotter:1.3.1
+    image: ghcr.io/anders-kramer/aarhus-plotter:1.4.0
     ports:
       - "192.0.2.10:8088:8080"
     volumes:
